@@ -1,12 +1,13 @@
 
 #include "lib_storage.h"
 
+#include "lib_battery.h"
+
 #include "vartab.h"
 
 storage::storage():
     storage_type(-1),
     config(storage_config_params()),
-    lifetime(storage_replacement_params()),
     time(storage_time_params()),
     forecast(storage_forecast()),
     state(storage_state()),
@@ -32,9 +33,6 @@ bool storage::storage_from_data(var_table &vt) {
     auto time_params = const_cast<storage_time_params*>(&time);
     storage_time_params_from_data(time_params, vt);
 
-    auto replacement_params = const_cast<storage_replacement_params*>(&lifetime);
-    storage_replacement_params_from_data(replacement_params, vt, config.is_batt);
-
     auto forecast_params = const_cast<storage_forecast*>(&forecast);
     storage_forecast_from_data(forecast_params, vt);
 
@@ -53,8 +51,6 @@ properties(battery_properties_params()),
 losses(battery_losses_params()),
 lifetime_batt(battery_lifetime_params()),
 power_outputs(battery_power_outputs()),
-lifetime_cycle_model(nullptr),
-lifetime_calendar_model(nullptr),
 battery_model(nullptr),
 battery_metrics(nullptr),
 charge_control(nullptr){
@@ -70,13 +66,17 @@ bool battery::battery_from_data(var_table &vt) {
 
     auto losses_params = const_cast<battery_losses_params*>(&losses);
     battery_losses_params_from_data(losses_params, vt);
+    if (losses_params->loss_monthly_or_timeseries == storage_params::LOSSES::TIMESERIES
+        && !(losses_params->losses.size() == 1 || losses_params->losses.size() == time.step_per_year)) {
+        throw general_error("system loss input length must be 1 or equal to weather file length for time series input mode");
+    }
 
     auto properties_params = const_cast<battery_properties_params*>(&properties);
     battery_properties_params_from_data(properties_params, vt);
 }
 
 bool battery::initialize_models(){
-
+    battery_model = new battery_t(time.dt_hour, &properties, &lifetime_batt, &losses);
 }
 
 battery_FOM::battery_FOM():

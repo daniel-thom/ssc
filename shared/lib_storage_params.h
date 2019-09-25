@@ -15,7 +15,8 @@ namespace storage_params{
     enum FOM_MODES { FOM_LOOK_AHEAD, FOM_LOOK_BEHIND, FOM_FORECAST, FOM_CUSTOM_DISPATCH, FOM_MANUAL, FOM_RESILIENCE };
     enum FOM_CYCLE_COST {MODEL_CYCLE_COST, INPUT_CYCLE_COST};
     enum REPLACEMENT { NONE, CAPACITY, SCHEDULE };
-    enum CALENDAR_LOSS_OPTIONS {NA, LITHIUM_ION_CALENDAR_MODEL, CALENDAR_LOSS_TABLE};
+    enum CALENDAR_OPTIONS {NA, LITHIUM_ION_CALENDAR_MODEL, CALENDAR_LOSS_TABLE};
+    enum LOSSES { MONTHLY, TIMESERIES};
 }
 
 struct storage_config_params
@@ -149,6 +150,8 @@ struct battery_lifetime_params
     double calendar_c;
 
     util::matrix_t<double> calendar_lifetime_matrix;
+
+    storage_replacement_params replacement;
 };
 
 void battery_lifetime_params_from_data(battery_lifetime_params* params, var_table& vt);

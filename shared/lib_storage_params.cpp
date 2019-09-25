@@ -108,17 +108,19 @@ void storage_manual_dispatch_params_from_data(storage_manual_dispatch_params* pa
 }
 
 void battery_lifetime_params_from_data(battery_lifetime_params* params, var_table& vt){
+    storage_replacement_params_from_data(&params->replacement, vt, true);
+
     params->lifetime_matrix = vt.as_matrix("batt_lifetime_matrix");
     if (params->lifetime_matrix.nrows() < 3 || params->lifetime_matrix.ncols() != 3)
         throw general_error("Battery lifetime matrix must have three columns and at least three rows");
 
     params->calendar_choice = vt.as_integer("batt_calendar_choice");
-    if (params->calendar_choice == storage_params::CALENDAR_LOSS_OPTIONS::CALENDAR_LOSS_TABLE){
+    if (params->calendar_choice == storage_params::CALENDAR_OPTIONS::CALENDAR_LOSS_TABLE){
         params->calendar_lifetime_matrix = vt.as_matrix("batt_calendar_lifetime_matrix");
         if ((params->calendar_lifetime_matrix.nrows() < 2 || params->calendar_lifetime_matrix.ncols() != 2))
             throw general_error("Battery calendar lifetime matrix must have 2 columns and at least 2 rows");
     }
-    if (params->calendar_choice == storage_params::CALENDAR_LOSS_OPTIONS::LITHIUM_ION_CALENDAR_MODEL) {
+    if (params->calendar_choice == storage_params::CALENDAR_OPTIONS::LITHIUM_ION_CALENDAR_MODEL) {
         params->calendar_q0 = vt.as_double("batt_calendar_q0");
         params->calendar_a = vt.as_double("batt_calendar_a");
         params->calendar_b = vt.as_double("batt_calendar_b");
@@ -132,6 +134,20 @@ void battery_losses_params_from_data(battery_losses_params* params, var_table& v
     params->losses_discharging = vt.as_vector_double("batt_losses_discharging");
     params->losses_idle = vt.as_vector_double("batt_losses_idle");
     params->losses = vt.as_vector_double("batt_losses");
+
+    // Check loss inputs
+    if (params->loss_monthly_or_timeseries == storage_params::LOSSES::MONTHLY
+        && !(params->losses_charging.size() == 1 || params->losses_charging.size() == 12)) {
+        throw general_error("charging loss length must be 1 or 12 for monthly input mode");
+    }
+    if (params->loss_monthly_or_timeseries == storage_params::LOSSES::MONTHLY
+        && !(params->losses_discharging.size() == 1 || params->losses_discharging.size() == 12)) {
+        throw general_error("discharging loss length must be 1 or 12 for monthly input mode");
+    }
+    if (params->loss_monthly_or_timeseries == storage_params::LOSSES::MONTHLY
+        && !(params->losses_idle.size() == 1 || params->losses_idle.size() == 12)) {
+        throw general_error("discharging loss length must be 1 or 12 for monthly input mode");
+    }
 }
 
 void battery_voltage_params_from_data(battery_voltage_params* params, var_table& vt){

@@ -26,7 +26,6 @@ private:
 protected:
     /*! Constant storage properties */
     const storage_config_params config;
-    const storage_replacement_params lifetime;
     const storage_time_params time;
 
     /*! Dynamic storage properties */
@@ -67,8 +66,6 @@ protected:
     battery_power_outputs power_outputs;
 
     /*! Models */
-    lifetime_cycle_t *lifetime_cycle_model;
-    lifetime_calendar_t *lifetime_calendar_model;
     battery_t *battery_model;
     battery_metrics_t *battery_metrics;
     ChargeController *charge_control;
@@ -195,6 +192,8 @@ public:
 
 class fuelcell : public storage {
 protected:
+    const storage_replacement_params lifetime;
+
     fuelcell_power_outputs fuelcell_outputs;
 
 public:
