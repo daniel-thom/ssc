@@ -1,72 +1,91 @@
 #ifndef SYSTEM_ADVISOR_MODEL_LIB_STORAGE_PARAMS_H
 #define SYSTEM_ADVISOR_MODEL_LIB_STORAGE_PARAMS_H
 
-#include "core.h"
+#include <vector>
 
-struct battvariables
+#include "lib_util.h"
+
+namespace storage_params{
+    enum CHEMS{ LEAD_ACID, LITHIUM_ION, VANADIUM_REDOX, IRON_FLOW};
+    enum METERING { BEHIND, FRONT };
+    enum CONNECTION { DC_CONNECTED, AC_CONNECTED };
+    enum CURRENT_CHOICE { RESTRICT_POWER, RESTRICT_CURRENT, RESTRICT_BOTH };
+    enum BTM_MODES { LOOK_AHEAD, LOOK_BEHIND, MAINTAIN_TARGET, CUSTOM_DISPATCH, MANUAL, RESILIENCE };
+    enum BTM_TARGET_MODES {TARGET_SINGLE_MONTHLY, TARGET_TIME_SERIES};
+    enum FOM_MODES { FOM_LOOK_AHEAD, FOM_LOOK_BEHIND, FOM_FORECAST, FOM_CUSTOM_DISPATCH, FOM_MANUAL, FOM_RESILIENCE };
+    enum FOM_CYCLE_COST {MODEL_CYCLE_COST, INPUT_CYCLE_COST};
+    enum REPLACEMENT { NONE, CAPACITY, SCHEDULE };
+    enum CALENDAR_LOSS_OPTIONS {NA, LITHIUM_ION_CALENDAR_MODEL, CALENDAR_LOSS_TABLE};
+}
+
+struct storage_config_params
 {
-    bool en_batt;
-    bool en_fuelcell;
-    int chem;
-    int dispatch;
-    int meter_position;
-    int loss_choice;
+    bool is_batt;
+    bool is_fuelcell;
+    int dispatch;                                   // from FOM_MODES or BTM_MODES
+    int meter_position;                             // from METERING
 };
 
-
-struct storage_common_params
+struct storage_replacement_params
 {
-    bool system_use_lifetime_output;
+    /* Replacement options */
+    int replacement_option;                         // 0=none,1=capacity based,2=user schedule
+    double replacement_capacity;                    // kWh
+    double cost_per_kwh;                            // $/kWh
+    std::vector<int> replacement_per_yr;            // number/year
+    std::vector<int> replacement_per_yr_schedule;   // number/year
+    std::vector<double> replacement_percent_per_yr; // %
+};
+
+void storage_replacement_params_from_data(storage_replacement_params* params, var_table& vt, bool batt_not_fuelcell);
+
+struct storage_time_params
+{
+    /* Constant values */
+    size_t step_per_hour;
+    size_t step_per_year;
+    size_t nyears;
+    double dt_hour;
+
+    bool system_use_lifetime_output;                // true or false
     int analysis_period;
-
-    /*! Battery lifetime costs */
-    int calendar_choice;
-    util::matrix_t<double> lifetime_matrix;
-    util::matrix_t<double> calendar_lifetime_matrix;
-    double batt_calendar_q0;
-    double batt_calendar_a;
-    double batt_calendar_b;
-    double batt_calendar_c;
-
-    /* Battery replacement options */
-    double cost_per_kwh;
-    int replacement_option;
-    std::vector<int> replacement_schedule;
-    double replacement_capacity;
 };
 
-struct storage_front_of_meter_params
-{
-    /* Automated or Custom dispatch */
-    int dispatch_mode;
-    std::vector<double> custom_dispatch_kw;
+void storage_time_params_from_data(storage_time_params* params, var_table& vt);
 
-    /* Automated Dispatch */
-    size_t look_ahead_hours;
-    double dispatch_update_frequency_hours;
-    std::vector<double> pv_clipping_forecast;
-    std::vector<double> pv_dc_power_forecast;
+struct storage_state
+{
+    /* Changing time values */
+    size_t year;
+    size_t hour;
+    size_t step;
+    size_t index;                                   // lifetime_index (0 - nyears * steps_per_hour * 8760)
+    size_t year_index;                              // index for one year (0- steps_per_hour * 8760)
+};
+
+struct storage_forecast
+{
+    int prediction_index;
+    std::vector<double> pv_prediction;
+    std::vector<double> load_prediction;
+    std::vector<double> cliploss_prediction;        // from inverter model in pvsam
+};
+
+void storage_forecast_from_data(storage_forecast* params, var_table& vt);
+
+struct storage_FOM_params{
+    double ppa_price;
     std::vector<double> ppa_price_series_dollar_per_kwh;
 
-    /* Energy rates */
-    bool ec_rate_defined;
-    util::matrix_t<size_t> ec_weekday_schedule;
-    util::matrix_t<size_t> ec_weekend_schedule;
-    util::matrix_t<double> ec_tou_matrix;
+    std::vector<double> pv_clipping_forecast;
+    std::vector<double> pv_dc_power_forecast;
 
-    /* Battery cycle costs */
+    // Battery cycle costs
     int cycle_cost_choice;
     double cycle_cost;
 };
 
-struct storage_behind_of_meter_params
-{
-    /* Automated or Custom dispatch */
-    int dispatch_mode;
-    std::vector<double> custom_dispatch_kw;
-
-    std::vector<double> target_power;
-};
+void storage_FOM_params_from_data(storage_FOM_params* params, var_table& vt);
 
 struct storage_automated_dispatch_params
 {
@@ -83,6 +102,8 @@ struct storage_automated_dispatch_params
     bool dispatch_auto_can_fuelcellcharge;
 
 };
+
+void storage_automated_dispatch_params_from_data(storage_automated_dispatch_params* params, var_table& vt);
 
 struct storage_manual_dispatch_params
 {
@@ -111,28 +132,31 @@ struct storage_manual_dispatch_params
     util::matrix_t<size_t> discharge_schedule_weekend;
 };
 
-struct storage_state_params
+void storage_manual_dispatch_params_from_data(storage_manual_dispatch_params* params, var_table& vt);
+
+/**
+ * Battery specific paramters
+ */
+struct battery_lifetime_params
 {
-    ssc_number_t *pcharge = 0;
-    ssc_number_t *pdischarge = 0;
-    ssc_number_t *pdischarge_percent = 0;
-    ssc_number_t *pgridcharge_percent = 0;
-    ssc_number_t *pgridcharge = 0;
-    ssc_number_t *psched = 0;
-    ssc_number_t *psched_weekend = 0;
+    util::matrix_t<double> lifetime_matrix;
+
+    int calendar_choice;                            // 0=NoCalendarDegradation,1=LithiomIonModel,2=InputLossTable
+
+    double calendar_q0;
+    double calendar_a;
+    double calendar_b;
+    double calendar_c;
+
+    util::matrix_t<double> calendar_lifetime_matrix;
 };
 
-struct storage_losses_params
-{
-    int loss_monthly_or_timeseries;
-    std::vector<double> losses_charging;
-    std::vector<double> losses_discharging;
-    std::vector<double> losses_idle;
-    std::vector<double> losses;
-};
+void battery_lifetime_params_from_data(battery_lifetime_params* params, var_table& vt);
 
 struct battery_voltage_params
 {
+    int voltage_choice;                             // 0=UseVoltageModel,1=InputVoltageTable
+
     double Vnom_default;
     double Vfull;
     double Vexp;
@@ -143,7 +167,12 @@ struct battery_voltage_params
     double Qnom;
     double C_rate;
     double resistance;
+
+    // voltage_choice 1
+    util::matrix_t<double> voltage_matrix;
 };
+
+void battery_voltage_params_from_data(battery_voltage_params* params, var_table& vt);
 
 struct battery_thermal_params
 {
@@ -157,16 +186,61 @@ struct battery_thermal_params
     std::vector<double> T_room;
 };
 
+void battery_thermal_params_from_data(battery_thermal_params* params, var_table& vt);
+
+struct battery_capacity_params
+{
+    int current_choice;                             // from CURRENT_CHOICE
+
+    double current_charge_max;
+    double current_discharge_max;
+
+    double power_charge_max_kwdc;
+    double power_discharge_max_kwdc;
+    double power_charge_max_kwac;
+    double power_discharge_max_kwac;
+};
+
+void battery_capacity_params_from_data(battery_capacity_params* params, var_table& vt);
+
+// for DC-connected batteries
 struct battery_inverter_params
 {
     size_t inverter_model;
     size_t inverter_count;
     double inverter_efficiency;
+    double inverter_efficiency_cutoff;
     double inverter_paco;
 };
 
+void battery_inverter_params_from_data(battery_inverter_params* params, var_table& vt);
+
+struct battery_losses_params
+{
+    int loss_monthly_or_timeseries;
+    std::vector<double> losses_charging;
+    std::vector<double> losses_discharging;
+    std::vector<double> losses_idle;
+    std::vector<double> losses;
+};
+
+void battery_losses_params_from_data(battery_losses_params* params, var_table& vt);
+
+struct LeadAcid_properties_params
+{
+    double q20_computed;
+    double tn;
+    double qn_computed;
+    double q10_computed;
+};
+
+void LeadAcid_properties_params_from_data(LeadAcid_properties_params* params, var_table& vt);
+
 struct battery_properties_params
 {
+    int chem;
+    LeadAcid_properties_params leadAcid;
+
     battery_thermal_params thermal;
 
     // Battery bank sizing
@@ -176,24 +250,15 @@ struct battery_properties_params
     double kwh;
 
     // voltage properties using either voltage model or table
-    int voltage_choice;
     battery_voltage_params voltage_vars;
-    util::matrix_t<double> voltage_matrix;
 
-    // restrict operations by current, power or both
-    int restriction_choice;
-
-    double current_charge_max;
-    double current_discharge_max;
-    double power_charge_max;
-    double power_discharge_max;
+    battery_capacity_params capacity_vars;
 
     // charge limits
     double initial_SOC;
     double maximum_SOC;
     double minimum_SOC;
     double minimum_modetime;
-
 
     // power converters and topology
     int topology;
@@ -205,130 +270,6 @@ struct battery_properties_params
     battery_inverter_params inverter;
 };
 
-struct LeadAcid_properties_params
-{
-    double LeadAcid_q20_computed;
-    double LeadAcid_tn;
-    double LeadAcid_qn_computed;
-    double LeadAcid_q10_computed;
-};
-
-/*! Fuelcell Storage Design Parameters */
-
-struct fuelcell_automated_FOM_params
-{
-    storage_common_params common;
-
-    storage_front_of_meter_params FOM;
-    storage_automated_dispatch_params dispatch;
-};
-
-struct fuelcell_manual_FOM_params
-{
-    storage_common_params common;
-
-    storage_front_of_meter_params FOM;
-    storage_manual_dispatch_params dispatch;
-};
-
-struct fuelcell_automated_BOM_params
-{
-    storage_common_params common;
-
-    storage_behind_of_meter_params BOM;
-    storage_automated_dispatch_params dispatch;
-};
-
-struct fuelcell_manual_BOM_params
-{
-    storage_common_params common;
-
-    storage_behind_of_meter_params BOM;
-    storage_manual_dispatch_params dispatch;
-};
-
-/*! Lithium Ion, Vanadium Redox and Iron Flow Battery Design Parameters */
-
-struct battery_automated_FOM_params
-{
-    storage_common_params common;
-    battery_properties_params properties;
-
-    storage_front_of_meter_params FOM;
-    storage_automated_dispatch_params dispatch;
-};
-
-struct battery_manual_FOM_params
-{
-    storage_common_params common;
-    battery_properties_params properties;
-
-    storage_front_of_meter_params FOM;
-    storage_manual_dispatch_params dispatch;
-};
-
-struct battery_automated_BOM_params
-{
-    storage_common_params common;
-    battery_properties_params properties;
-
-    storage_behind_of_meter_params FOM;
-    storage_automated_dispatch_params dispatch;
-};
-
-struct battery_manual_BOM_params
-{
-    storage_common_params common;
-    battery_properties_params properties;
-
-    storage_behind_of_meter_params FOM;
-    storage_manual_dispatch_params dispatch;
-};
-
-/*! Lead Acid Battery Design Parameters */
-
-struct LeadAcid_automated_FOM_params
-{
-    storage_common_params common;
-    battery_properties_params properties;
-
-    LeadAcid_properties_params leadAcid;
-
-    storage_front_of_meter_params FOM;
-    storage_automated_dispatch_params dispatch;
-};
-
-struct LeadAcid_manual_FOM_params
-{
-    storage_common_params common;
-    battery_properties_params properties;
-
-    LeadAcid_properties_params leadAcid;
-
-    storage_front_of_meter_params FOM;
-    storage_manual_dispatch_params dispatch;
-};
-
-struct LeadAcid_automated_BOM_params
-{
-    storage_common_params common;
-    battery_properties_params properties;
-
-    LeadAcid_properties_params leadAcid;
-
-    storage_behind_of_meter_params FOM;
-    storage_automated_dispatch_params dispatch;
-};
-
-struct LeadAcid_manual_BOM_params
-{
-    storage_common_params common;
-    battery_properties_params properties;
-
-    LeadAcid_properties_params leadAcid;
-
-    storage_behind_of_meter_params FOM;
-    storage_manual_dispatch_params dispatch;
-};
+void battery_properties_params_from_data(battery_properties_params* params, var_table& vt);
 
 #endif //SYSTEM_ADVISOR_MODEL_LIB_STORAGE_PARAMS_H

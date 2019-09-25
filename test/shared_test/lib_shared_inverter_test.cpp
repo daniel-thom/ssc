@@ -5,7 +5,7 @@
 * Shared Inverter Class test
 */
 
-class sharedInverterTest : public ::testing::Test {
+class inverter_lib_shared_inverter : public ::testing::Test {
 protected:
 	SharedInverter* inv;
 	sandia_inverter_t sinv;
@@ -21,16 +21,16 @@ public:
 		eff = 1.;
 		loss = 0.;
 	}
-	void SetUp() {
+	void SetUp() override {
 		inv = new SharedInverter(0, 1, &sinv, &plinv, &ondinv);
 	}
-	void TearDown() {
-		if (inv) delete inv;
+	void TearDown() override {
+		delete inv;
 	}
 };
 
 
-TEST_F(sharedInverterTest, tempDerateTest_lib_shared_inverter) {
+TEST_F(inverter_lib_shared_inverter, tempDerateTest) {
 	/// First set of curves
 	std::vector<double> c1 = { 200., 20., -0.2, 40., -0.4 };
 	std::vector<double> c2 = { 300., 30., -0.3, 60., -0.6 };

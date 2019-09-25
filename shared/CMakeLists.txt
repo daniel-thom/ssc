@@ -63,7 +63,7 @@ set(SHARED_SRC
 
 	lib_storage_capacity.cpp
 	lib_storage_voltage.cpp
-		)
+		lib_storage.cpp lib_storage_params.cpp lib_storage_outputs.cpp)
 
 
 #####################################################################################################################
