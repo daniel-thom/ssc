@@ -659,7 +659,7 @@ public:
         lifetime_t *,
         thermal_t *,
         capacity_t*,
-        const int loss_mode,
+        int loss_mode,
         const double_vec& batt_loss_charge_kw = std::vector<double>(0),
         const double_vec& batt_loss_discharge_kw = std::vector<double>(0),
         const double_vec& batt_loss_idle_kw = std::vector<double>(0),
@@ -720,8 +720,7 @@ public:
 	// copy members from battery to this
 	void copy(const battery_t * battery);
 
-	// virtual destructor, does nothing as no memory allocated in constructor
-	virtual ~battery_t();
+	~battery_t();
 
 	// delete the new submodels that have been allocated
 	void delete_clone();

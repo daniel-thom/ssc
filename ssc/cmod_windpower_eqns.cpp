@@ -3,8 +3,7 @@
 #include <cstdio>
 #include <math.h>
 
-#include "vartab.h"
-#include "../shared/lib_util.h"
+#include "../shared/vartab.h"
 
 #include "cmod_windpower_eqns.h"
 

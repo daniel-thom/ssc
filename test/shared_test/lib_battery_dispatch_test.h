@@ -241,6 +241,4 @@ public:
 
 };
 
-
-
 #endif

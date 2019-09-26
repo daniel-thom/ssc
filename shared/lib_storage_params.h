@@ -3,6 +3,7 @@
 
 #include <vector>
 
+#include "vartab.h"
 #include "lib_util.h"
 
 namespace storage_params{
@@ -86,7 +87,7 @@ struct storage_FOM_params{
     double cycle_cost;
 };
 
-void storage_FOM_params_from_data(storage_FOM_params* params, var_table& vt);
+void storage_FOM_params_from_data(storage_FOM_params* params, var_table& vt, size_t step_per_hour);
 
 struct storage_automated_dispatch_params
 {

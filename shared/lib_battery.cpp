@@ -1442,6 +1442,7 @@ losses_t::losses_t(double dtHour, lifetime_t * lifetime, thermal_t * thermal, ca
     _thermal = thermal;
     _capacity = capacity;
     _loss_mode = p->loss_monthly_or_timeseries;
+    _nCycle = 0;
     init_loss_vecs(p->losses_charging, p->losses_discharging, p->losses_idle, p->losses);
 }
 
@@ -1452,7 +1453,7 @@ losses_t::losses_t(double dtHour, lifetime_t * lifetime, thermal_t * thermal, ca
 	_thermal = thermal;
 	_capacity = capacity;
 	_loss_mode = loss_choice;
-	_nCycle = 0;
+    _nCycle = 0;
     init_loss_vecs(charge_loss, discharge_loss, idle_loss, losses);
 }
 
@@ -1634,10 +1635,13 @@ battery_t::battery_t(const battery_t& battery)
 
 battery_t::~battery_t()
 {
-	if (_capacity_initial)
-		delete _capacity_initial;
-	if (_thermal_initial)
-		delete _thermal_initial;
+    delete _capacity;
+    delete _capacity_initial;
+    delete _voltage;
+    delete _lifetime;
+    delete _thermal;
+    delete _thermal_initial;
+    delete _losses;
 }
 
 // copy from battery to this

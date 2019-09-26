@@ -15,7 +15,6 @@ void storage_replacement_params_from_data(storage_replacement_params* params, va
             params->replacement_capacity = vt.as_double("batt_replacement_capacity");
         }
         else if (params->replacement_option == storage_params::REPLACEMENT::SCHEDULE){
-            params->replacement_per_yr = vt.as_vector_integer("batt_bank_replacement");
             params->replacement_per_yr_schedule = vt.as_vector_integer("batt_replacement_schedule");
             params->replacement_percent_per_yr = vt.as_vector_double("batt_replacement_schedule_percent");
         }
@@ -35,7 +34,7 @@ void storage_replacement_params_from_data(storage_replacement_params* params, va
 }
 
 void storage_time_params_from_data(storage_time_params* time_params, var_table& vt){
-    time_params->dt_hour = vt.as_number("timestep_hr");
+    time_params->dt_hour = vt.as_number("dt_hr");
     time_params->step_per_hour = static_cast<size_t>(1. / time_params->dt_hour);
     time_params->step_per_year = 8760 * time_params->step_per_hour;
     time_params->analysis_period = vt.as_integer("analysis_period");
@@ -237,7 +236,7 @@ void battery_inverter_params_from_data(battery_inverter_params* params, var_tabl
         params->inverter_model = SharedInverter::NONE;
         params->inverter_count = 1;
         params->inverter_efficiency = vt.as_double("batt_ac_dc_efficiency");
-        params->inverter_paco = vt.as_double("batt_power_discharge_max");
+        params->inverter_paco = vt.as_double("batt_power_discharge_max_kwdc");
     }
 }
 
@@ -259,7 +258,7 @@ void battery_properties_params_from_data(battery_properties_params* params, var_
     params->computed_series = vt.as_integer("batt_computed_series");
     params->computed_strings = vt.as_integer("batt_computed_strings");
     params->kwh = vt.as_double("batt_computed_bank_capacity");
-    params->kw = vt.as_double("batt_power_discharge_max");
+    params->kw = vt.as_double("batt_power_discharge_max_kwdc");
 
     battery_voltage_params_from_data(&params->voltage_vars, vt);
     

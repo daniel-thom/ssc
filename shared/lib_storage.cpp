@@ -16,6 +16,10 @@ storage::storage():
     dispatch_model(nullptr){
 }
 
+storage::~storage() {
+    delete dispatch_model;
+}
+
 storage* storage::Create(int storage_type) {
     switch (storage_type){
         case BATT_BTM_AUTO: return new battery_BTM_automated();
@@ -29,7 +33,7 @@ storage* storage::Create(int storage_type) {
     }
 }
 
-bool storage::storage_from_data(var_table &vt) {
+void storage::storage_from_data(var_table &vt) {
     auto time_params = const_cast<storage_time_params*>(&time);
     storage_time_params_from_data(time_params, vt);
 
@@ -58,7 +62,7 @@ charge_control(nullptr){
     config_params->is_batt = true;
 }
 
-bool battery::battery_from_data(var_table &vt) {
+void battery::battery_from_data(var_table &vt) {
     storage::storage_from_data(vt);
 
     auto lifetime_params = const_cast<battery_lifetime_params*>(&lifetime_batt);
@@ -75,7 +79,7 @@ bool battery::battery_from_data(var_table &vt) {
     battery_properties_params_from_data(properties_params, vt);
 }
 
-bool battery::initialize_models(){
+void battery::initialize_models(){
     battery_model = new battery_t(time.dt_hour, &properties, &lifetime_batt, &losses);
 }
 
@@ -87,10 +91,10 @@ FOM(storage_FOM_params())
     config_params->meter_position = storage_params::METERING::FRONT;
 }
 
-bool battery_FOM::battery_FOM_from_data(var_table &vt){
+void battery_FOM::battery_FOM_from_data(var_table &vt){
     battery::battery_from_data(vt);
     auto FOM_params = const_cast<storage_FOM_params *>(&FOM);
-    storage_FOM_params_from_data(FOM_params, vt);
+    storage_FOM_params_from_data(FOM_params, vt, time.step_per_hour);
 }
 
 battery_FOM_automated::battery_FOM_automated():
@@ -100,7 +104,7 @@ look_ahead_hours(0),
 dispatch_update_frequency_hours(-1){
 }
 
-bool battery_FOM_automated::battery_FOM_automated_from_data(var_table &vt) {
+void battery_FOM_automated::battery_FOM_automated_from_data(var_table &vt) {
     battery_FOM::battery_FOM_from_data(vt);
 
     if (vt.is_assigned("en_electricity_rates")) {
@@ -126,6 +130,10 @@ bool battery_FOM_automated::battery_FOM_automated_from_data(var_table &vt) {
     dispatch_update_frequency_hours = vt.as_double("batt_dispatch_update_frequency_hours");
 }
 
+void battery_FOM_automated::from_data(var_table &vt) {
+    battery_FOM_automated_from_data(vt);
+}
+
 battery_FOM_manual::battery_FOM_manual():
 battery_FOM(),
 manual_dispatch(storage_manual_dispatch_params()){
@@ -133,10 +141,15 @@ manual_dispatch(storage_manual_dispatch_params()){
     config_params->dispatch = storage_params::FOM_MODES::FOM_MANUAL;
 }
 
-bool battery_FOM_manual::battery_FOM_manual_from_data(var_table &vt){
+void battery_FOM_manual::battery_FOM_manual_from_data(var_table &vt){
     battery_FOM::battery_FOM_from_data(vt);
     auto params = const_cast<storage_manual_dispatch_params*>(&manual_dispatch);
     storage_manual_dispatch_params_from_data(params, vt);
+}
+
+
+void battery_FOM_manual::from_data(var_table &vt) {
+    battery_FOM_manual_from_data(vt);
 }
 
 battery_FOM_custom::battery_FOM_custom():
@@ -145,9 +158,13 @@ battery_FOM(){
     config_params->dispatch = storage_params::FOM_MODES::FOM_CUSTOM_DISPATCH;
 }
 
-bool battery_FOM_custom::battery_FOM_custom_from_data(var_table &vt){
+void battery_FOM_custom::battery_FOM_custom_from_data(var_table &vt){
     battery_FOM::battery_FOM_from_data(vt);
     custom_dispatch_kw = vt.as_vector_double("batt_custom_dispatch");
+}
+
+void battery_FOM_custom::from_data(var_table &vt) {
+    battery_FOM_custom_from_data(vt);
 }
 
 battery_BTM::battery_BTM():
@@ -157,7 +174,7 @@ utilityRate(nullptr){
     config_params->meter_position = storage_params::METERING::BEHIND;
 }
 
-bool battery_BTM::battery_BTM_from_data(var_table &vt) {
+void battery_BTM::battery_BTM_from_data(var_table &vt) {
     battery_from_data(vt);
     utilityRate = nullptr;
 }
@@ -167,7 +184,7 @@ battery_BTM(),
 automated_dispatch(storage_automated_dispatch_params()){
 }
 
-bool battery_BTM_automated::battery_BTM_automated_from_data(var_table &vt) {
+void battery_BTM_automated::battery_BTM_automated_from_data(var_table &vt) {
     battery_BTM_from_data(vt);
     auto params = const_cast<storage_automated_dispatch_params *>(&automated_dispatch);
     storage_automated_dispatch_params_from_data(params, vt);
@@ -205,6 +222,10 @@ bool battery_BTM_automated::battery_BTM_automated_from_data(var_table &vt) {
     }
 }
 
+void battery_BTM_automated::from_data(var_table &vt) {
+    battery_BTM_automated_from_data(vt);
+}
+
 battery_BTM_manual::battery_BTM_manual():
 battery_BTM(),
 manual_dispatch(storage_manual_dispatch_params()){
@@ -212,10 +233,14 @@ manual_dispatch(storage_manual_dispatch_params()){
     config_params->dispatch = storage_params::BTM_MODES::MANUAL;
 }
 
-bool battery_BTM_manual::battery_BTM_manual_from_data(var_table &vt) {
+void battery_BTM_manual::battery_BTM_manual_from_data(var_table &vt) {
     battery_BTM_from_data(vt);
     auto params = const_cast<storage_manual_dispatch_params *>(&manual_dispatch);
     storage_manual_dispatch_params_from_data(params, vt);
+}
+
+void battery_BTM_manual::from_data(var_table &vt) {
+    battery_BTM_manual_from_data(vt);
 }
 
 battery_BTM_custom::battery_BTM_custom():
@@ -224,8 +249,26 @@ battery_BTM(){
     config_params->dispatch = storage_params::BTM_MODES::CUSTOM_DISPATCH;
 }
 
-bool battery_BTM_custom::battery_BTM_custom_from_data(var_table& vt){
+void battery_BTM_custom::battery_BTM_custom_from_data(var_table& vt){
     battery_BTM_from_data(vt);
     custom_dispatch_kw = vt.as_vector_double("batt_custom_dispatch");
 }
 
+void battery_BTM_custom::from_data(var_table &vt) {
+    battery_BTM_custom_from_data(vt);
+}
+
+fuelcell::fuelcell():
+storage(),
+replacement(storage_replacement_params()),
+fuelcell_outputs(fuelcell_power_outputs())
+{}
+
+void fuelcell::fuelcell_from_data(var_table& vt){
+
+}
+
+
+void fuelcell::from_data(var_table &vt) {
+
+}

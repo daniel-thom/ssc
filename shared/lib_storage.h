@@ -40,22 +40,28 @@ protected:
 
     /*! Models */
     dispatch_t *dispatch_model;
+
+    void storage_from_data(var_table& vt);
+
+    void initialize_models();
+
 public:
     explicit storage();
+
+    virtual ~storage();
 
     static storage* Create(int storage_type);
 
     int get_storage_type() {return storage_type;}
     storage_config_params get_config() {return config;}
-    storage_replacement_params get_lifetime() {return lifetime;}
     storage_time_params get_time() {return time;}
 
-    bool storage_from_data(var_table& vt);
+    virtual void from_data(var_table &vt) = 0;
 
-    bool initialize_models();
 };
 
 class battery : public storage {
+
 protected:
     /*! Constant battery properties */
     const battery_properties_params properties;
@@ -70,12 +76,20 @@ protected:
     battery_metrics_t *battery_metrics;
     ChargeController *charge_control;
 
+    void battery_from_data(var_table& vt);
+
 public:
     explicit battery();
 
-    bool battery_from_data(var_table& vt);
+    ~battery() override {
+        delete battery_model;
+        delete battery_metrics;
+        delete charge_control;
+    };
 
-    bool initialize_models();
+    void from_data(var_table &vt) override = 0;
+
+    void initialize_models();
 
 };
 
@@ -87,15 +101,17 @@ class battery_FOM : public battery
 protected:
     const storage_FOM_params FOM;
 
+    void battery_FOM_from_data(var_table& vt);
+
 public:
     explicit battery_FOM();
 
-    bool battery_FOM_from_data(var_table& vt);
-
+    void from_data(var_table &vt) override = 0;
 };
 
 class battery_FOM_automated : public battery_FOM
 {
+
 protected:
     storage_automated_dispatch_params automated_dispatch;
 
@@ -110,12 +126,12 @@ protected:
     size_t look_ahead_hours;
     double dispatch_update_frequency_hours;
 
+    void battery_FOM_automated_from_data(var_table &vt);
+
 public:
     explicit battery_FOM_automated();
 
-    bool battery_FOM_automated_from_data(var_table &vt);
-
-
+    void from_data(var_table &vt) override;
 };
 
 class battery_FOM_manual : public battery_FOM
@@ -123,11 +139,12 @@ class battery_FOM_manual : public battery_FOM
 protected:
     storage_manual_dispatch_params manual_dispatch;
 
+    void battery_FOM_manual_from_data(var_table &vt);
+
 public:
     explicit battery_FOM_manual();
-    bool battery_FOM_manual_from_data(var_table &vt);
 
-
+    void from_data(var_table &vt) override;
 };
 
 class battery_FOM_custom : public battery_FOM
@@ -135,10 +152,12 @@ class battery_FOM_custom : public battery_FOM
 protected:
     std::vector<double> custom_dispatch_kw;
 
+    void battery_FOM_custom_from_data(var_table &vt);
+
 public:
     explicit battery_FOM_custom();
 
-    bool battery_FOM_custom_from_data(var_table &vt);
+    void from_data(var_table &vt) override;
 };
 
 /**
@@ -149,12 +168,18 @@ class battery_BTM : public battery
 protected:
     std::vector<double> target_power;
 
+    void battery_BTM_from_data(var_table& vt);
+
     /*! Models */
     UtilityRate * utilityRate;
 public:
     explicit battery_BTM();
 
-    bool battery_BTM_from_data(var_table& vt);
+    ~battery_BTM() override {
+    }
+
+    void from_data(var_table &vt) override = 0;
+
 };
 
 class battery_BTM_automated : public battery_BTM
@@ -162,9 +187,14 @@ class battery_BTM_automated : public battery_BTM
 protected:
     storage_automated_dispatch_params automated_dispatch;
 
+    void battery_BTM_automated_from_data(var_table& vt);
+
 public:
     explicit battery_BTM_automated();
-    bool battery_BTM_automated_from_data(var_table& vt);
+
+    ~battery_BTM_automated() override {}
+
+    void from_data(var_table &vt) override;
 
 };
 
@@ -173,9 +203,11 @@ class battery_BTM_manual : public battery_BTM
 protected:
     storage_manual_dispatch_params manual_dispatch;
 
+    void battery_BTM_manual_from_data(var_table& vt);
+
 public:
     explicit battery_BTM_manual();
-    bool battery_BTM_manual_from_data(var_table& vt);
+    void from_data(var_table &vt) override;
 
 };
 
@@ -184,21 +216,26 @@ class battery_BTM_custom : public battery_BTM
 protected:
     std::vector<double> custom_dispatch_kw;
 
+    void battery_BTM_custom_from_data(var_table& vt);
+
 public:
     explicit battery_BTM_custom();
-    bool battery_BTM_custom_from_data(var_table& vt);
+
+    void from_data(var_table &vt) override;
 
 };
 
 class fuelcell : public storage {
 protected:
-    const storage_replacement_params lifetime;
+    const storage_replacement_params replacement;
 
     fuelcell_power_outputs fuelcell_outputs;
 
+    void fuelcell_from_data(var_table& vt);
 public:
     explicit fuelcell();
-    bool fuelcell_from_data(var_table& vt);
 
-};
+    void from_data(var_table &vt);
+
+    };
 #endif //SYSTEM_ADVISOR_MODEL_LIB_STORAGE_H
