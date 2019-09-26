@@ -7,174 +7,161 @@
 
 #include "lib_storage_capacity.h"
 
+void capacity_state::init(double q, double SOC_init){
+    q0 = 0.01*SOC_init*q;
+    qmax = q;
+    qmax_thermal = q;
+    I = 0.;
+    I_loss = 0.;
+
+    // Initialize SOC, DOD
+    SOC = SOC_init;
+    DOD = 0;
+    DOD_prev = 0;
+
+    // Initialize charging states
+    prev_charge = DISCHARGE;
+    charge = DISCHARGE;
+    chargeChange = false;
+}
+
 /*
 Define Capacity Model
 */
-capacity_t::capacity_t() { /* nothing to do */ }
-capacity_t::capacity_t(double q, double SOC_init, double SOC_max, double SOC_min)
+capacity_interface::capacity_interface() { /* nothing to do */ }
+
+void capacity_interface::check_charge_change(capacity_state& state)
 {
-    _qmax0 = q;
-    _dt_hour = 0.;
-    _SOC_init = SOC_init;
-    _SOC_max = SOC_max;
-    _SOC_min = SOC_min;
-
-    _state.q0 = 0.01*SOC_init*q;
-    _state.qmax = q;
-    _state.qmax_thermal = q;
-    _state.I = 0.;
-    _state.I_loss = 0.;
-    _state.DOD = 0;
-
-    // Initialize SOC, DOD
-    _state.SOC = SOC_init;
-    _state.DOD_prev = 0;
-
-    // Initialize charging states
-    _state.prev_charge = DISCHARGE;
-    _state.charge = DISCHARGE;
-    _state.chargeChange = false;
-}
-void capacity_t::copy(capacity_t * capacity)
-{
-    _state = capacity_state_params(capacity->_state);
-
-    _qmax0 = capacity->_qmax0;
-        _SOC_init = capacity->_SOC_init;
-    _SOC_min = capacity->_SOC_min;
-    _SOC_max = capacity->_SOC_max;
-    _dt_hour = capacity->_dt_hour;
-}
-void capacity_t::check_charge_change()
-{
-    _state.charge = NO_CHARGE;
+    state.charge = capacity_state::NO_CHARGE;
 
     // charge state
-    if (_state.I < 0)
-        _state.charge = CHARGE;
-    else if (_state.I > 0)
-        _state.charge = DISCHARGE;
+    if (state.I < 0)
+        state.charge = capacity_state::CHARGE;
+    else if (state.I > 0)
+        state.charge = capacity_state::DISCHARGE;
 
     // Check if charge changed
-    _state.chargeChange = false;
-    if ((_state.charge != _state.prev_charge) && (_state.charge != NO_CHARGE) && (_state.prev_charge != NO_CHARGE))
+    state.chargeChange = false;
+    if ((state.charge != state.prev_charge) && (state.charge != capacity_state::NO_CHARGE)
+        && (state.prev_charge != capacity_state::NO_CHARGE))
     {
-        _state.chargeChange = true;
-        _state.prev_charge = _state.charge;
+        state.chargeChange = true;
+        state.prev_charge = state.charge;
     }
 }
-int capacity_t::charge_operation(){ return _state.charge; }
-void capacity_t::check_SOC()
+
+void capacity_interface::check_SOC(capacity_state& state, double SOC_min, double SOC_max, double dt_hour)
 {
-    double q_upper = _state.qmax * _SOC_max * 0.01;
-    double q_lower = _state.qmax * _SOC_min * 0.01;
-    double I_orig = _state.I;
+    double q_upper = state.qmax * SOC_max * 0.01;
+    double q_lower = state.qmax * SOC_min * 0.01;
+    double I_orig = state.I;
 
     // set capacity to upper thermal limit
-    if (q_upper > _state.qmax_thermal * _SOC_max * 0.01)
-        q_upper = _state.qmax_thermal * _SOC_max * 0.01;
+    if (q_upper > state.qmax_thermal * SOC_max * 0.01)
+        q_upper = state.qmax_thermal * SOC_max * 0.01;
 
     // check if overcharged
-    if (_state.q0 > q_upper )
+    if (state.q0 > q_upper )
     {
-        if (fabs(_state.I) > tolerance)
+        if (fabs(state.I) > tolerance)
         {
-            _state.I += (_state.q0 - q_upper) / _dt_hour;
-            if (_state.I / I_orig < 0)
-                _state.I = 0;
+            state.I += (state.q0 - q_upper) / dt_hour;
+            if (state.I / I_orig < 0)
+                state.I = 0;
         }
-        _state.q0 = q_upper;
+        state.q0 = q_upper;
     }
         // check if undercharged
-    else if (_state.q0 < q_lower)
+    else if (state.q0 < q_lower)
     {
-        if (fabs(_state.I) > tolerance)
+        if (fabs(state.I) > tolerance)
         {
-            _state.I += (_state.q0 - q_lower) / _dt_hour;
-            if (_state.I / I_orig < 0)
-                _state.I = 0;
+            state.I += (state.q0 - q_lower) / dt_hour;
+            if (state.I / I_orig < 0)
+                state.I = 0;
         }
-        _state.q0 = q_lower;
+        state.q0 = q_lower;
     }
 }
 
-void capacity_t::update_SOC()
+void capacity_interface::update_SOC(capacity_state& state)
 {
-    if (_state.qmax > 0)
-        _state.SOC = 100.*(_state.q0 / _state.qmax_thermal);
+    if (state.qmax > 0)
+        state.SOC = 100.*(state.q0 / state.qmax_thermal);
     else
-        _state.SOC = 0.;
+        state.SOC = 0.;
 
     // due to dynamics, it's possible SOC could be slightly above 1 or below 0
-    if (_state.SOC > 100.0)
-        _state.SOC = 100.0;
-    else if (_state.SOC < 0.)
-        _state.SOC = 0.;
+    if (state.SOC > 100.0)
+        state.SOC = 100.0;
+    else if (state.SOC < 0.)
+        state.SOC = 0.;
 
-    _state.DOD = 100. - _state.SOC;
+    state.DOD = 100. - state.SOC;
 }
-bool capacity_t::chargeChanged(){return _state.chargeChange;}
-double capacity_t::SOC(){ return _state.SOC; }
-double capacity_t::DOD(){ return _state.DOD; }
-double capacity_t::DOD_max(){ return _SOC_max - _SOC_min; }
-double capacity_t::prev_DOD(){ return _state.DOD_prev; }
-double capacity_t::q0(){ return _state.q0;}
-double capacity_t::qmax(){ return _state.qmax; }
-double capacity_t::qmax_thermal(){ return _state.qmax_thermal; }
-double capacity_t::I(){ return _state.I; }
-double capacity_t::I_loss() { return _state.I_loss; }
 
 /*
 Define KiBam Capacity Model
 */
 capacity_kibam_t::capacity_kibam_t(){ /* nothing to do */}
-capacity_kibam_t::capacity_kibam_t(double q20, double t1, double q1, double q10, double SOC_init, double SOC_max, double SOC_min) :
-        capacity_t(q20, SOC_init, SOC_max, SOC_min)
+
+capacity_kibam_t::capacity_kibam_t(double q20, double t1, double q1, double q10, double SOC_in, double SOC_mx, double SOC_mi)
 {
-    _kibam_state.q10 = q10;
-    _kibam_state.q20 = q20;
-    _kibam_state.I20 = q20/20.;
+    qmax0 = q20;
+    SOC_init = SOC_in;
+    SOC_min = SOC_mi;
+    SOC_max = SOC_mx;
+    state.kibam.q10 = q10;
+    state.kibam.q20 = q20;
+    state.kibam.I20 = q20/20.;
 
     // parameters for c, k calculation
-    _q1 = q1;
-    _q2 = q10;
-    _t1 = t1;
-    _t2 = 10.;
-    _F1 = q1 / q20; // use t1, 20
-    _F2 = q1 / q10;  // use t1, 10
+    q1 = q1;
+    q2 = q10;
+    t1 = t1;
+    t2 = 10.;
+    F1 = q1 / q20; // use t1, 20
+    F2 = q1 / q10;  // use t1, 10
 
     // compute the parameters
     parameter_compute();
-    _qmax0 = _state.qmax;
+    qmax0 = state.qmax;
 
     // initializes to full battery
     replace_battery();
 }
 capacity_kibam_t * capacity_kibam_t::clone(){ return new capacity_kibam_t(*this); }
-void capacity_kibam_t::copy(capacity_t * capacity)
+void capacity_kibam_t::copy(capacity_interface * capacity)
 {
-    capacity_t::copy(capacity);
-    capacity_kibam_t * tmp = dynamic_cast<capacity_kibam_t*>(capacity);
+    if (auto* tmp = dynamic_cast<capacity_kibam_t*>(capacity)){
+        state = tmp->state;
+        qmax0 = tmp->qmax0;
+        SOC_init = tmp->SOC_init;
+        SOC_max = tmp->SOC_max;
+        SOC_min = tmp->SOC_min;
+        dt_hour = tmp->dt_hour;
 
-    _t1 = tmp->_t1;
-    _t2 = tmp->_t2;
-    _q1 = tmp->_q1;
-    _q2 = tmp->_q2;
-    _F1 = tmp->_F1;
-    _F2 = tmp->_F2;
-    _c = tmp->_c;
-    _k = tmp->_k;
-    _kibam_state = kibam_struct_params(tmp->_kibam_state);
+        t1 = tmp->t1;
+        t2 = tmp->t2;
+        q1 = tmp->q1;
+        q2 = tmp->q2;
+        F1 = tmp->F1;
+        F2 = tmp->F2;
+        c = tmp->c;
+        k = tmp->k;
+
+    }
+
 }
 
 void capacity_kibam_t::replace_battery()
 {
     // Assume initial charge is max capacity
-    _state.q0 = _qmax0*_SOC_init*0.01;
-    _kibam_state.q1_0 = _state.q0*_c;
-    _kibam_state.q2_0 = _state.q0 - _kibam_state.q1_0;
-    _state.qmax = _qmax0;
-    _state.SOC = _SOC_init;
+    state.q0 = qmax0 * SOC_init * 0.01;
+    state.kibam.q1_0 = state.q0 * c;
+    state.kibam.q2_0 = state.q0 - state.kibam.q1_0;
+    state.qmax = qmax0;
+    state.SOC = SOC_init;
 }
 
 double capacity_kibam_t::c_compute(double F, double t1, double t2, double k_guess)
@@ -186,44 +173,44 @@ double capacity_kibam_t::c_compute(double F, double t1, double t2, double k_gues
 
 double capacity_kibam_t::q1_compute(double q10, double q0, double dt, double I)
 {
-    double A = q10*exp(-_k*dt);
-    double B = (q0*_k*_c - I)*(1 - exp(-_k*dt)) / _k;
-    double C = I*_c*(_k*dt - 1 + exp(-_k*dt)) / _k;
+    double A = q10*exp(-k * dt);
+    double B = (q0 * k * c - I) * (1 - exp(-k * dt)) / k;
+    double C = I * c * (k * dt - 1 + exp(-k * dt)) / k;
     return (A + B - C);
 }
 
 double capacity_kibam_t::q2_compute(double q20, double q0, double dt, double I)
 {
-    double A = q20*exp(-_k*dt);
-    double B = q0*(1 - _c)*(1 - exp(-_k*dt));
-    double C = I*(1 - _c)*(_k*dt - 1 + exp(-_k*dt)) / _k;
+    double A = q20*exp(-k * dt);
+    double B = q0 * (1 - c) * (1 - exp(-k * dt));
+    double C = I * (1 - c) * (k * dt - 1 + exp(-k * dt)) / k;
     return (A + B - C);
 }
 
 double capacity_kibam_t::Icmax_compute(double q10, double q0, double dt)
 {
-    double num = -_k*_c*_state.qmax + _k*q10*exp(-_k*dt) + q0*_k*_c*(1 - exp(-_k*dt));
-    double denom = 1 - exp(-_k*dt) + _c*(_k*dt - 1 + exp(-_k*dt));
+    double num = -k * c * state.qmax + k * q10 * exp(-k * dt) + q0 * k * c * (1 - exp(-k * dt));
+    double denom = 1 - exp(-k * dt) + c * (k * dt - 1 + exp(-k * dt));
     return (num / denom);
 }
 
 double capacity_kibam_t::Idmax_compute(double q10, double q0, double dt)
 {
-    double num = _k*q10*exp(-_k*dt) + q0*_k*_c*(1 - exp(-_k*dt));
-    double denom = 1 - exp(-_k*dt) + _c*(_k*dt - 1 + exp(-_k*dt));
+    double num = k * q10 * exp(-k * dt) + q0 * k * c * (1 - exp(-k * dt));
+    double denom = 1 - exp(-k * dt) + c * (k * dt - 1 + exp(-k * dt));
     return (num / denom);
 }
 
 double capacity_kibam_t::qmax_compute()
 {
-    double num = _kibam_state.q20*((1 - exp(-_k * 20)) * (1 - _c) + _k*_c * 20);
-    double denom = _k*_c * 20;
+    double num = state.kibam.q20*((1 - exp(-k * 20)) * (1 - c) + k * c * 20);
+    double denom = k * c * 20;
     return (num / denom);
 }
 
 double capacity_kibam_t::qmax_of_i_compute(double T)
 {
-    return ((_state.qmax*_k*_c*T) / (1 -exp(-_k*T) + _c*(_k*T - 1 + exp(-_k*T))));
+    return ((state.qmax * k * c * T) / (1 - exp(-k * T) + c * (k * T - 1 + exp(-k * T))));
 }
 void capacity_kibam_t::parameter_compute()
 {
@@ -235,17 +222,17 @@ void capacity_kibam_t::parameter_compute()
     for (int i = 0; i < 5000; i++)
     {
         k_guess = i*0.001;
-        c1 = c_compute(_F1, _t1, 20, k_guess);
-        c2 = c_compute(_F2, _t1, _t2, k_guess);
+        c1 = c_compute(F1, t1, 20, k_guess);
+        c2 = c_compute(F2, t1, t2, k_guess);
 
         if (fabs(c1 - c2) < minRes)
         {
             minRes = fabs(c1 - c2);
-            _k = k_guess;
-            _c = 0.5*(c1 + c2);
+            k = k_guess;
+            c = 0.5 * (c1 + c2);
         }
     }
-    _state.qmax = qmax_compute();
+    state.qmax = qmax_compute();
 }
 
 void capacity_kibam_t::updateCapacity(double &I, double dt_hour)
@@ -253,10 +240,10 @@ void capacity_kibam_t::updateCapacity(double &I, double dt_hour)
     if (fabs(I) < low_tolerance)
         I = 0;
 
-    _state.DOD_prev = _state.DOD;
-    _state.I_loss = 0.;
-    _state.I = I;
-    _dt_hour = dt_hour;
+    state.DOD_prev = state.DOD;
+    state.I_loss = 0.;
+    state.I = I;
+    dt_hour = dt_hour;
 
     double Idmax = 0.;
     double Icmax = 0.;
@@ -265,129 +252,154 @@ void capacity_kibam_t::updateCapacity(double &I, double dt_hour)
     double q1 = 0.;
     double q2 = 0.;
 
-    if (_state.I > 0)
+    if (state.I > 0)
     {
-        Idmax = Idmax_compute(_kibam_state.q1_0, _state.q0, dt_hour);
-        Id = fmin(_state.I, Idmax);
-        _state.I = Id;
+        Idmax = Idmax_compute(state.kibam.q1_0, state.q0, dt_hour);
+        Id = fmin(state.I, Idmax);
+        state.I = Id;
     }
-    else if (_state.I < 0)
+    else if (state.I < 0)
     {
-        Icmax = Icmax_compute(_kibam_state.q1_0, _state.q0, dt_hour);
-        Ic = -fmin(fabs(_state.I), fabs(Icmax));
-        _state.I = Ic;
+        Icmax = Icmax_compute(state.kibam.q1_0, state.q0, dt_hour);
+        Ic = -fmin(fabs(state.I), fabs(Icmax));
+        state.I = Ic;
     }
 
     // new charge levels
-    q1 = q1_compute(_kibam_state.q1_0, _state.q0, dt_hour, _state.I);
-    q2 = q2_compute(_kibam_state.q2_0, _state.q0, dt_hour, _state.I);
+    q1 = q1_compute(state.kibam.q1_0, state.q0, dt_hour, state.I);
+    q2 = q2_compute(state.kibam.q2_0, state.q0, dt_hour, state.I);
 
     // Check for thermal effects
-    if (q1 + q2 > _state.qmax_thermal)
+    if (q1 + q2 > state.qmax_thermal)
     {
         double q0 = q1 + q2;
         double p1 = q1 / q0;
         double p2 = q2 / q0;
-        _state.q0 = _state.qmax_thermal;
-        q1 = _state.q0*p1;
-        q2 = _state.q0*p2;
+        state.q0 = state.qmax_thermal;
+        q1 = state.q0*p1;
+        q2 = state.q0*p2;
     }
 
     // update internal variables
-    _kibam_state.q1_0 = q1;
-    _kibam_state.q2_0 = q2;
-    _state.q0 = q1 + q2;
+    state.kibam.q1_0 = q1;
+    state.kibam.q2_0 = q2;
+    state.q0 = q1 + q2;
 
-    update_SOC();
-    check_charge_change();
+    update_SOC(state);
+    check_charge_change(state);
 
     // Pass current out
-    I = _state.I;
+    I = state.I;
 }
 void capacity_kibam_t::updateCapacityForThermal(double capacity_percent)
 {
     // Modify the lifetime degraded capacity by the thermal effect
-    _state.qmax_thermal = _state.qmax*capacity_percent*0.01;
+    state.qmax_thermal = state.qmax*capacity_percent*0.01;
 }
 void capacity_kibam_t::updateCapacityForLifetime(double capacity_percent)
 {
 
-    if (_qmax0* capacity_percent*0.01 <= _state.qmax)
-        _state.qmax = _qmax0* capacity_percent*0.01;
+    if (qmax0 * capacity_percent * 0.01 <= state.qmax)
+        state.qmax = qmax0 * capacity_percent * 0.01;
 
     // scale to q0 = qmax if q0 > qmax
-    if (_state.q0 > _state.qmax)
+    if (state.q0 > state.qmax)
     {
-        double q0_orig = _state.q0;
-        double p = _state.qmax / _state.q0;
-        _state.q0 *= p;
-        _q1 *= p;
-        _q2 *= p;
-        _state.I_loss += (q0_orig - _state.q0) / _dt_hour;
+        double q0_orig = state.q0;
+        double p = state.qmax / state.q0;
+        state.q0 *= p;
+        q1 *= p;
+        q2 *= p;
+        state.I_loss += (q0_orig - state.q0) / dt_hour;
     }
-    update_SOC();
+    update_SOC(state);
 }
 
-double capacity_kibam_t::q1(){ return _kibam_state.q1_0; }
-double capacity_kibam_t::q2(){ return _kibam_state.q2_0; }
-double capacity_kibam_t::q10(){ return _kibam_state.q10; }
-double capacity_kibam_t::q20(){return _kibam_state.q20;}
+double capacity_kibam_t::get_q1(){ return state.kibam.q1_0; }
+double capacity_kibam_t::get_q2(){ return state.kibam.q2_0; }
+double capacity_kibam_t::get_q10(){ return state.kibam.q10; }
 
 
 /*
 Define Lithium Ion capacity model
 */
-capacity_lithium_ion_t::capacity_lithium_ion_t() { /* nothing to do */ }
-capacity_lithium_ion_t::capacity_lithium_ion_t(double q, double SOC_init, double SOC_max, double SOC_min) :capacity_t(q, SOC_init, SOC_max, SOC_min){};
-capacity_lithium_ion_t * capacity_lithium_ion_t::clone(){ return new capacity_lithium_ion_t(*this); }
-void capacity_lithium_ion_t::copy(capacity_t * capacity){ capacity_t::copy(capacity);}
+capacity_lithium_ion_t::capacity_lithium_ion_t() {
+    /* nothing to do */ }
+
+capacity_lithium_ion_t::capacity_lithium_ion_t(double q, double SOC_init, double SOC_max, double SOC_min) {
+    qmax0 = q;
+    SOC_init = SOC_init;
+    SOC_max = SOC_max;
+    SOC_min = SOC_min;
+    dt_hour = 0.;
+
+    state.init(q, SOC_init);
+}
+
+capacity_lithium_ion_t * capacity_lithium_ion_t::clone(){
+    auto clone = new capacity_lithium_ion_t();
+}
+
+void capacity_lithium_ion_t::copy(capacity_interface * capacity){
+    if (auto* tmp = dynamic_cast<capacity_lithium_ion_t*>(capacity)) {
+
+        state = tmp->state;
+
+        qmax0 = tmp->qmax0;
+        SOC_init = tmp->SOC_init;
+        SOC_min = tmp->SOC_min;
+        SOC_max = tmp->SOC_max;
+        dt_hour = tmp->dt_hour;
+    }
+}
 
 void capacity_lithium_ion_t::replace_battery()
 {
-    _state.q0 = _qmax0 * _SOC_init * 0.01;
-    _state.qmax = _qmax0;
-    _state.qmax_thermal = _qmax0;
-    _state.SOC = _SOC_init;
+    state.q0 = qmax0 * SOC_init * 0.01;
+    state.qmax = qmax0;
+    state.qmax_thermal = qmax0;
+    state.SOC = SOC_init;
 }
+
 void capacity_lithium_ion_t::updateCapacity(double &I, double dt)
 {
-    _state.DOD_prev = _state.DOD;
-    _state.I_loss = 0.;
-    _dt_hour = dt;
-    _state.I = I;
+    state.DOD_prev = state.DOD;
+    state.I_loss = 0.;
+    dt_hour = dt;
+    state.I = I;
 
     // compute charge change ( I > 0 discharging, I < 0 charging)
-    _state.q0 -= _state.I*dt;
+    state.q0 -= state.I*dt;
 
     // check if SOC constraints violated, update q0, I if so
-    check_SOC();
+    check_SOC(state, SOC_min, SOC_max, dt);
 
     // update SOC, DOD
-    update_SOC();
-    check_charge_change();
+    update_SOC(state);
+    check_charge_change(state);
 
     // Pass current out
-    I = _state.I;
+    I = state.I;
 }
 void capacity_lithium_ion_t::updateCapacityForThermal(double capacity_percent)
 {
     // Modify the lifetime degraded capacity by the thermal effect
-    _state.qmax_thermal = _state.qmax*capacity_percent*0.01;
+    state.qmax_thermal = state.qmax*capacity_percent*0.01;
 }
 void capacity_lithium_ion_t::updateCapacityForLifetime(double capacity_percent)
 {
 
-    if (_qmax0* capacity_percent*0.01 <= _state.qmax)
-        _state.qmax = _qmax0* capacity_percent*0.01;
+    if (qmax0 * capacity_percent * 0.01 <= state.qmax)
+        state.qmax = qmax0 * capacity_percent * 0.01;
 
-    if (_state.q0 > _state.qmax)
+    if (state.q0 > state.qmax)
     {
-        _state.I_loss += (_state.q0 - _state.qmax) / _dt_hour;
-        _state.q0 = _state.qmax;
+        state.I_loss += (state.q0 - state.qmax) / dt_hour;
+        state.q0 = state.qmax;
     }
 
-    update_SOC();
+    update_SOC(state);
 }
-double capacity_lithium_ion_t::q1(){return _state.q0;}
-double capacity_lithium_ion_t::q10(){return _state.qmax;}
+double capacity_lithium_ion_t::get_q1(){return state.q0;}
+double capacity_lithium_ion_t::get_q10(){return state.qmax;}
 
