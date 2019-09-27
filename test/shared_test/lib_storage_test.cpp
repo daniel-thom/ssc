@@ -12,7 +12,7 @@ class Storage_lib_storage : public ::testing::Test {
 protected:
     size_t n_rec = 10;
     double dt_hr = 1;
-    storage* batt;
+    storage_interface* batt;
     var_table* vt;
 public:
     void SetUp() override {
@@ -28,6 +28,6 @@ public:
 };
 
 TEST_F(Storage_lib_storage, SetUp){
-    batt = storage::Create(BATT_BTM_AUTO);
+    batt = storage_interface::Create(BATT_BTM_AUTO);
     batt->from_data(*vt);
 }

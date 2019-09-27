@@ -3,17 +3,46 @@
 
 
 UtilityRate::UtilityRate(
-	bool useRealTimePrices,
-	util::matrix_t<size_t> ecWeekday, 
-	util::matrix_t<size_t> ecWeekend, 
-	util::matrix_t<double> ecRatesMatrix,
-	std::vector<double> ecRealTimeBuy)
+        bool useRealTimePrices,
+        const util::matrix_t<size_t> &ecWeekday,
+        const util::matrix_t<size_t> &ecWeekend,
+        const util::matrix_t<double> &ecRatesMatrix,
+        const std::vector<double> &ecRealTimeBuy)
 {
 	m_useRealTimePrices = useRealTimePrices,
 	m_ecWeekday = ecWeekday;
 	m_ecWeekend = ecWeekend;
 	m_ecRatesMatrix = ecRatesMatrix;
 	m_ecRealTimeBuy = ecRealTimeBuy;
+}
+
+UtilityRate::UtilityRate(const util::matrix_t<size_t>& ecWeekday,
+            const util::matrix_t<size_t>& ecWeekend,
+            const util::matrix_t<double>& ecRatesMatrix):
+m_ecWeekday(ecWeekday),
+m_ecWeekend(ecWeekend),
+m_ecRatesMatrix(ecRatesMatrix),
+m_useRealTimePrices(false){
+}
+
+UtilityRate::UtilityRate(const std::vector<double>& ecRealTimeBuy):
+        m_ecRealTimeBuy(ecRealTimeBuy),
+        m_useRealTimePrices(true){}
+
+UtilityRate::UtilityRate(util::matrix_t<size_t>&& ecWeekday,
+        util::matrix_t<size_t>&& ecWeekend,
+        util::matrix_t<double>&& ecRatesMatrix):
+m_ecWeekday(std::move(ecWeekday)),
+m_ecWeekend(std::move(ecWeekend)),
+m_ecRatesMatrix(std::move(ecRatesMatrix)),
+m_useRealTimePrices(false)
+{
+}
+
+UtilityRate::UtilityRate(std::vector<double>&& ecRealTimeBuy):
+        m_ecRealTimeBuy(std::move(ecRealTimeBuy)),
+        m_useRealTimePrices(true)
+{
 }
 
 UtilityRate::UtilityRate(const UtilityRate& tmp){

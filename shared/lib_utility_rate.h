@@ -11,12 +11,25 @@ public:
 	UtilityRate(){};
 
 	UtilityRate(bool useRealTimePrices,
-		util::matrix_t<size_t> ecWeekday, 
-		util::matrix_t<size_t> ecWeekend, 
-		util::matrix_t<double> ecRatesMatrix,
-		std::vector<double> ecRealTimeBuy);
+                const util::matrix_t<size_t> &ecWeekday,
+                const util::matrix_t<size_t> &ecWeekend,
+                const util::matrix_t<double> &ecRatesMatrix,
+                const std::vector<double> &ecRealTimeBuy);
 
-	UtilityRate(const UtilityRate& tmp);
+    UtilityRate(const util::matrix_t<size_t>& ecWeekday,
+                const util::matrix_t<size_t>& ecWeekend,
+                const util::matrix_t<double>& ecRatesMatrix);
+
+    explicit UtilityRate(const std::vector<double>& ecRealTimeBuy);
+
+    UtilityRate(util::matrix_t<size_t>&& ecWeekday,
+                util::matrix_t<size_t>&& ecWeekend,
+                util::matrix_t<double>&& ecRatesMatrix);
+
+    explicit UtilityRate(std::vector<double>&& ecRealTimeBuy);
+
+
+    UtilityRate(const UtilityRate& tmp);
 
 	virtual ~UtilityRate() {/* nothing to do */ };
 

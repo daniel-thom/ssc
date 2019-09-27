@@ -1,8 +1,7 @@
-#ifndef SYSTEM_ADVISOR_MODEL_LIB_STORAGE_CAPACITY_H
-#define SYSTEM_ADVISOR_MODEL_LIB_STORAGE_CAPACITY_H
+#ifndef SYSTEM_ADVISOR_MODEL_LIB_BATTERY_CAPACITY_H
+#define SYSTEM_ADVISOR_MODEL_LIB_BATTERY_CAPACITY_H
 
-const double low_tolerance = 0.01;
-const double tolerance = 0.001;
+#include "lib_storage_params.h"
 
 struct capacity_state{
     enum { CHARGE, NO_CHARGE, DISCHARGE };
@@ -39,14 +38,11 @@ public:
 
     capacity_interface();
 
-    // deep copy
-    virtual capacity_interface *clone() = 0;
-
     // virtual destructor
     virtual ~capacity_interface() {};
 
     // pure virtual functions (abstract) which need to be defined in derived classes
-    virtual void updateCapacity(double &I, double dt) = 0;
+    virtual void updateCapacity(double &I) = 0;
     virtual void updateCapacityForThermal(double capacity_percent) = 0;
     virtual void updateCapacityForLifetime(double capacity_percent) = 0;
 
@@ -58,10 +54,12 @@ public:
     virtual capacity_state get_state() = 0;
     virtual void set_state(const capacity_state &state) = 0;
 
+    virtual battery_capacity_params get_params() const = 0;
+
 protected:
     static void check_charge_change(capacity_state &state);
 
-    static void check_SOC(capacity_state &state, double SOC_min, double SOC_max, double dt_hour);
+    static void check_SOC(capacity_state &state, const battery_capacity_params &params);
 
     static void update_SOC(capacity_state &state);
 };
@@ -75,17 +73,13 @@ class capacity_kibam_t : public capacity_interface
 public:
 
     // Public APIs
-    capacity_kibam_t();
-    capacity_kibam_t(double q20, double t1, double q1, double q10, double SOC_init, double SOC_max, double SOC_min);
+    capacity_kibam_t(const battery_capacity_params& p);
     ~capacity_kibam_t(){}
 
-    // deep copy
-    capacity_kibam_t * clone();
-
     // copy from capacity to this
-    void copy(capacity_interface *);
+    capacity_kibam_t(const capacity_kibam_t&);
 
-    void updateCapacity(double &I, double dt);
+    void updateCapacity(double &I);
     void updateCapacityForThermal(double capacity_percent);
     void updateCapacityForLifetime(double capacity_percent);
 
@@ -98,15 +92,12 @@ public:
     capacity_state get_state() override { return state; }
     void set_state(const capacity_state& new_state) override { state = new_state; }
 
+    battery_capacity_params get_params() const override {return params;};
+
 protected:
     capacity_state state;
 
-    // charge limits
-    double qmax0; // [Ah] - original maximum capacity
-    double SOC_init; // [%] - Initial SOC
-    double SOC_max; // [%] - Maximum SOC
-    double SOC_min; // [%] - Minimum SOC
-    double dt_hour; // [hr] - Timestep in hours
+    const battery_capacity_params params;
 
     // parameters for finding c, k, qmax
     double t1;  // [h] - discharge rate for capacity at _q1
@@ -121,13 +112,12 @@ protected:
     double k;  // [1/hour] - rate constant
 
     // unique to kibam
-    double c_compute(double F, double t1, double t2, double k_guess);
-    double q1_compute(double q10, double q0, double dt, double I); // may remove some inputs, use class variables
-    double q2_compute(double q20, double q0, double dt, double I); // may remove some inputs, use class variables
-    double Icmax_compute(double q10, double q0, double dt);
-    double Idmax_compute(double q10, double q0, double dt);
+    double c_compute(double F, double t2, double k_guess);
+    double q1_compute(double q10, double q0, double I); // may remove some inputs, use class variables
+    double q2_compute(double q20, double q0, double I); // may remove some inputs, use class variables
+    double Icmax_compute(double q10, double q0);
+    double Idmax_compute(double q10, double q0);
     double qmax_compute();
-    double qmax_of_i_compute(double T);
     void parameter_compute();
 };
 
@@ -137,18 +127,14 @@ Lithium Ion specific capacity model
 class capacity_lithium_ion_t : public capacity_interface
 {
 public:
-    capacity_lithium_ion_t();
-    capacity_lithium_ion_t(double q, double SOC_init, double SOC_max, double SOC_min);
+    capacity_lithium_ion_t(const battery_capacity_params& p);
     ~capacity_lithium_ion_t(){};
 
-    // deep copy
-    capacity_lithium_ion_t * clone() override;
-
     // copy from capacity to this
-    void copy(capacity_interface *);
+    capacity_lithium_ion_t(const capacity_lithium_ion_t&);
 
     // override public api
-    void updateCapacity(double &I, double dt) override;
+    void updateCapacity(double &I) override;
     void updateCapacityForThermal(double capacity_percent) override;
     void updateCapacityForLifetime(double capacity_percent) override;
 
@@ -160,16 +146,13 @@ public:
     capacity_state get_state() override { return state; }
     void set_state(const capacity_state& new_state) override { state = new_state; }
 
+    battery_capacity_params get_params() const override {return params;};
+
 protected:
     capacity_state state;
 
-    // charge limits
-    double qmax0; // [Ah] - original maximum capacity
-    double SOC_init; // [%] - Initial SOC
-    double SOC_max; // [%] - Maximum SOC
-    double SOC_min; // [%] - Minimum SOC
-    double dt_hour; // [hr] - Timestep in hours
+    battery_capacity_params params;
 };
 
 
-#endif //SYSTEM_ADVISOR_MODEL_LIB_STORAGE_CAPACITY_H
+#endif //SYSTEM_ADVISOR_MODEL_LIB_BATTERY_CAPACITY_H

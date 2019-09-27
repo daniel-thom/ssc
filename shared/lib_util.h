@@ -280,7 +280,17 @@ namespace util
 			t_array = NULL;
 			copy( cc );
 		}
-		
+
+		matrix_t(matrix_t&& other) noexcept{
+		    if (this != &other){
+                n_rows = other.nrows();
+                n_cols = other.ncols();
+                t_array = other.t_array;
+                other.t_array = new T[1];
+		    }
+		    return *this;
+		}
+
 		matrix_t(size_t len)
 		{
 			n_rows = n_cols = 0;
