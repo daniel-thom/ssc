@@ -81,21 +81,21 @@ void BatteryPower::reset()
 	voltageSystem = 0;
 }
 
-battery_powerflow::battery_powerflow(double dtHour)
+BatteryPowerFlow::BatteryPowerFlow(double dtHour)
 {
 	std::unique_ptr<BatteryPower> tmp(new BatteryPower(dtHour));
 	m_BatteryPower = std::move(tmp);
 }
-battery_powerflow::battery_powerflow(const battery_powerflow& powerFlow)
+BatteryPowerFlow::BatteryPowerFlow(const BatteryPowerFlow& powerFlow)
 {
 	std::unique_ptr<BatteryPower> tmp(new BatteryPower(*powerFlow.m_BatteryPower));
 	m_BatteryPower = std::move(tmp);
 }
-BatteryPower * battery_powerflow::getBatteryPower()
+BatteryPower * BatteryPowerFlow::getBatteryPower()
 {
 	return m_BatteryPower.get();
 }
-void battery_powerflow::calculate()
+void BatteryPowerFlow::calculate()
 {
 	if (m_BatteryPower->connectionMode == ChargeController::AC_CONNECTED) {
 		calculateACConnected();
@@ -104,7 +104,7 @@ void battery_powerflow::calculate()
 		calculateDCConnected();
 	}
 }
-void battery_powerflow::initialize(double stateOfCharge)
+void BatteryPowerFlow::initialize(double stateOfCharge)
 {
 	// If the battery is allowed to discharge, do so
 	if (m_BatteryPower->canDischarge && stateOfCharge > m_BatteryPower->stateOfChargeMin + 1.0 &&
@@ -128,13 +128,13 @@ void battery_powerflow::initialize(double stateOfCharge)
 	}
 }
 
-void battery_powerflow::reset()
+void BatteryPowerFlow::reset()
 {
 	m_BatteryPower->reset();
 }
 
 
-void battery_powerflow::calculateACConnected()
+void BatteryPowerFlow::calculateACConnected()
 {
 	// The battery power is initially a DC power, which must be converted to AC for powerflow
 	double P_battery_dc = m_BatteryPower->powerBatteryDC;
@@ -262,7 +262,7 @@ void battery_powerflow::calculateACConnected()
 	m_BatteryPower->powerConversionLoss = P_batt_to_load_loss_ac + P_batt_to_grid_loss_ac + P_grid_to_batt_loss_ac + P_pv_to_batt_loss_ac;
 }
 
-void battery_powerflow::calculateDCConnected()
+void BatteryPowerFlow::calculateDCConnected()
 {
 	// Quantities are AC in KW unless otherwise specified
 	double P_load_ac = m_BatteryPower->powerLoad;
