@@ -9,14 +9,13 @@ struct capacity_state{
     double q0;  // [Ah] - Total capacity at timestep
     double qmax; // [Ah] - maximum possible capacity
     double qmax_thermal; // [Ah] - maximum capacity adjusted for temperature affects
-    double I;   // [A]  - Current draw during last step
+    double I;   // [A]  - Current draw
     double I_loss; // [A] - Lifetime and thermal losses
     double SOC; // [%] - State of Charge
     double DOD; // [%] - Depth of Discharge
     double DOD_prev; // [%] - Depth of Discharge of previous step
-    bool chargeChange; // [true/false] - indicates if charging state has changed since last step
-    int prev_charge; // {CHARGE, NO_CHARGE, DISCHARGE}
-    int charge; // {CHARGE, NO_CHARGE, DISCHARGE}
+    int prev_charge_mode; // {CHARGE, NO_CHARGE, DISCHARGE}
+    int charge_mode; // {CHARGE, NO_CHARGE, DISCHARGE}
 
     struct {
         double q1_0; // [Ah] - charge available
@@ -57,9 +56,9 @@ public:
     virtual battery_capacity_params get_params() const = 0;
 
 protected:
-    static void check_charge_change(capacity_state &state);
+    static void compute_charge_modes(capacity_state &state);
 
-    static void check_SOC(capacity_state &state, const battery_capacity_params &params);
+    static void apply_SOC_limits(capacity_state &state, const battery_capacity_params &params);
 
     static void update_SOC(capacity_state &state);
 };
@@ -83,7 +82,7 @@ public:
     void updateCapacityForThermal(double capacity_percent);
     void updateCapacityForLifetime(double capacity_percent);
 
-    void replace_battery();
+    void replace_battery() override;
 
     double get_q1() override; // Available charge
     double get_q2(); // Bound charge

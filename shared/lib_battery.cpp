@@ -1332,11 +1332,6 @@ thermal_t::thermal_t(double dt_hour, double mass, double length, double width, d
 {
 	init();
 }
-thermal_t::thermal_t(double dt_hour, const battery_thermal_params& p)
-        : _dt_hour(dt_hour), _mass(p.mass), _length(p.length), _width(p.width), _height(p.height),
-          _Cp(p.Cp), _h(p.h_to_ambient), _T_room(p.T_room), _cap_vs_temp(p.cap_vs_temp), _T_battery(p.T_room[0]){
-    init();
-}
 void thermal_t::init(){
     _R = 0.004;
     _capacity_percent = 100;
@@ -1436,15 +1431,6 @@ double thermal_t::capacity_percent()
 /*
 Define Losses
 */
-losses_t::losses_t(double dtHour, lifetime_t * lifetime, thermal_t * thermal, capacity_t* capacity, const battery_losses_params* p){
-    _dtHour = dtHour;
-    _lifetime = lifetime;
-    _thermal = thermal;
-    _capacity = capacity;
-    _loss_mode = p->loss_monthly_or_timeseries;
-    _nCycle = 0;
-    init_loss_vecs(p->losses_charging, p->losses_discharging, p->losses_idle, p->losses);
-}
 
 losses_t::losses_t(double dtHour, lifetime_t * lifetime, thermal_t * thermal, capacity_t* capacity, int loss_choice, const double_vec& charge_loss, const double_vec& discharge_loss, const double_vec& idle_loss, const double_vec& losses)
 {
@@ -1567,55 +1553,6 @@ battery_t::battery_t(double dt, int batt_chem){
     _dt_min = dt * 60;
     _battery_chemistry = batt_chem;
     _last_idx = 0;
-}
-
-battery_t::battery_t(double dt, const battery_properties_params *prop, const battery_lifetime_params *lifetime,
-                     const battery_losses_params *losses)
-{
-	_dt_hour = dt;
-	_dt_min = dt * 60;
-	_battery_chemistry = prop->chem;
-	_last_idx = 0;
-
-	if (_battery_chemistry != storage_params::CHEMS::LEAD_ACID) {
-		_capacity_initial = new capacity_lithium_ion_t(prop->voltage_vars.Qfull * prop->computed_strings,
-                                                       prop->initial_SOC, prop->maximum_SOC, prop->minimum_SOC);
-	}
-	else {
-        const auto& b = prop->leadAcid;
-        _capacity_initial = new capacity_kibam_t(b.q20_computed, b.tn, b.qn_computed, b.q10_computed, prop->initial_SOC,
-                                                 prop->maximum_SOC, prop->minimum_SOC);
-	}
-
-    double Vnom_def = prop->voltage_vars.Vnom_default;
-    double resistance = prop->voltage_vars.resistance;
-	if (prop->voltage_vars.voltage_choice == 0){
-        if (_battery_chemistry == storage_params::CHEMS::VANADIUM_REDOX){
-	        _voltage = new voltage_vanadium_redox_t(prop->computed_series, prop->computed_strings, Vnom_def, resistance);
-        }
-        else if (_battery_chemistry == battery_t::LEAD_ACID || _battery_chemistry == battery_t::LITHIUM_ION){
-            _voltage = new voltage_dynamic_t(prop->computed_series, prop->computed_strings, &prop->voltage_vars);
-        }
-    }
-	else{
-        _voltage = new voltage_table_t(prop->computed_series, prop->computed_strings, Vnom_def, prop->voltage_vars.voltage_matrix, resistance);
-	}
-
-    auto lifetime_cycle_model = new lifetime_cycle_t(lifetime->lifetime_matrix);
-	lifetime_calendar_t* lifetime_calendar_model = nullptr;
-
-    if (lifetime->calendar_choice == storage_params::CALENDAR_OPTIONS::LITHIUM_ION_CALENDAR_MODEL)
-        lifetime_calendar_model = new lifetime_calendar_t(lifetime->calendar_q0, lifetime->calendar_a,
-                                                          lifetime->calendar_b, lifetime->calendar_c, dt);
-    else if (lifetime->calendar_choice == storage_params::CALENDAR_OPTIONS::CALENDAR_LOSS_TABLE)
-        lifetime_calendar_model = new lifetime_calendar_t(lifetime->calendar_lifetime_matrix, dt);
-
-	_lifetime = new lifetime_t(lifetime_cycle_model, lifetime_calendar_model, lifetime->replacement.replacement_option,
-	        lifetime->replacement.replacement_capacity);
-
-    _thermal_initial = new thermal_t(dt, prop->thermal);
-
-    _losses = new losses_t(dt, _lifetime, _thermal_initial, _capacity_initial, losses);
 }
 
 battery_t::battery_t(const battery_t& battery)

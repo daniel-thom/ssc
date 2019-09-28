@@ -28,14 +28,14 @@ struct BatteryPower;
 *				 c) Iterate on the current (due to the nonlinear relationship in P = IV) until the constraints are met
 *				 d) Calculate the final power flow for the time step.
 */
-class BatteryPowerFlow
+class battery_powerflow
 {
 public:
 	/// Create a BatteryPowerFlow object
-	BatteryPowerFlow(double dtHour);
+	battery_powerflow(double dtHour);
 
 	/// Perform a deep copy of a BatteryFlow object
-	BatteryPowerFlow(const BatteryPowerFlow& powerFlow);
+	battery_powerflow(const battery_powerflow& powerFlow);
 
 	/// Initialize the power flow for the battery system.  Only needs to be called for manual dispatch control
 	void initialize(double stateOfCharge);

@@ -33,25 +33,6 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "lib_util.h"
 #include "lib_storage_params.h"
 
-// Messages
-class message
-{
-public:
-    message(){};
-    virtual ~message(){};
-
-
-    void add(std::string message);
-    size_t total_message_count();
-    size_t message_count(int index);
-    std::string get_message(int index);
-    std::string construct_log_count_string(int index);
-
-protected:
-    std::vector<std::string> messages;
-    std::vector<int> count;
-};
-
 /*
 Voltage Base class.
 All voltage models are based on one-cell, but return the voltage for one battery
@@ -63,12 +44,11 @@ class voltage_interface
 public:
     explicit voltage_interface() {}
 
-    // deep copy
-    virtual voltage_interface * clone()=0;
-
     virtual ~voltage_interface(){};
 
     virtual void updateVoltage(const capacity_state &capacity, double T_battery_K = 0) = 0;
+
+    virtual void set_batt_voltage(double) = 0;
 
     virtual double get_battery_voltage() = 0; // voltage of one battery
     virtual double get_cell_voltage() = 0; // voltage of one cell
@@ -108,6 +88,8 @@ public:
 
     void updateVoltage(const capacity_state &capacity, double T_battery_K = 0) override;
 
+    void set_batt_voltage(double v) override { cell_voltage_state = v / params.num_cells_series;}
+
     double get_battery_voltage() override {return params.num_cells_series * cell_voltage_state;};
     double get_cell_voltage() override { return cell_voltage_state; };
     double get_battery_voltage_nominal() {return params.num_cells_series * params.Vnom_default;};
@@ -138,6 +120,8 @@ public:
 
     void parameter_compute();
     void updateVoltage(const capacity_state &capacity, double T_battery_K) override;
+
+    void set_batt_voltage(double v) override { cell_voltage_state = v / params.num_cells_series;}
 
     double get_battery_voltage() override {return params.num_cells_series * cell_voltage_state;};
     double get_cell_voltage() override { return cell_voltage_state; };
@@ -170,6 +154,8 @@ public:
     voltage_vanadium_redox_t(const voltage_vanadium_redox_t &);
 
     void updateVoltage(const capacity_state &capacity, double T_battery_K) override;
+
+    void set_batt_voltage(double v) override { cell_voltage_state = v / params.num_cells_series;}
 
     double get_battery_voltage() override {return params.num_cells_series * cell_voltage_state;};
     double get_cell_voltage() override { return cell_voltage_state; };

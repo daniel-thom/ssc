@@ -19,10 +19,32 @@ enum storage_type{
     BATT_BTM_AUTO, BATT_BTM_MAN, BATT_BTM_CSTM, BATT_FOM_AUTO, BATT_FOM_MAN, BATT_FOM_CSTM, FUELCELL
 };
 
-class storage {
+class storage_interface {
 private:
     int storage_type;
 
+protected:
+
+    /*! Models */
+
+    void storage_from_data(var_table& vt);
+
+public:
+    explicit storage_interface();
+
+    virtual ~storage_interface();
+
+    static storage_interface* Create(int storage_type);
+
+//    virtual int get_storage_type() = 0;
+//    virtual storage_config_params get_config() = 0;
+//    storage_time_params get_time() {return time;}
+
+    virtual void from_data(var_table &vt) = 0;
+
+};
+
+class battery_models {
 protected:
     /*! Constant storage properties */
     const storage_config_params config;
@@ -38,31 +60,6 @@ protected:
     /*! Dynamic storage outputs */
     storage_state_outputs charge_outputs;
 
-    /*! Models */
-    dispatch_t *dispatch_model;
-
-    void storage_from_data(var_table& vt);
-
-    void initialize_models();
-
-public:
-    explicit storage();
-
-    virtual ~storage();
-
-    static storage* Create(int storage_type);
-
-    int get_storage_type() {return storage_type;}
-    storage_config_params get_config() {return config;}
-    storage_time_params get_time() {return time;}
-
-    virtual void from_data(var_table &vt) = 0;
-
-};
-
-class battery : public storage {
-
-protected:
     /*! Constant battery properties */
     const battery_properties_params properties;
     const battery_lifetime_params lifetime_batt;
@@ -72,6 +69,7 @@ protected:
     battery_power_outputs power_outputs;
 
     /*! Models */
+    dispatch_t *dispatch_model;
     battery_t *battery_model;
     battery_metrics_t *battery_metrics;
     ChargeController *charge_control;
@@ -79,15 +77,15 @@ protected:
     void battery_from_data(var_table& vt);
 
 public:
-    explicit battery();
+    explicit battery_models();
 
-    ~battery() override {
+    ~battery_models() {
         delete battery_model;
         delete battery_metrics;
         delete charge_control;
     };
 
-    void from_data(var_table &vt) override = 0;
+    void from_data(var_table &vt);
 
     void initialize_models();
 
@@ -109,18 +107,14 @@ public:
     void from_data(var_table &vt) override = 0;
 };
 
-class battery_FOM_automated : public battery_FOM
+class battery_FOM_automated : public storage_interface
 {
-
 protected:
+    const storage_FOM_params FOM;
+
     storage_automated_dispatch_params automated_dispatch;
 
-    /* Energy rates */
-    bool ec_use_realtime;
-    util::matrix_t<size_t> ec_weekday_schedule;
-    util::matrix_t<size_t> ec_weekend_schedule;
-    util::matrix_t<double> ec_tou_matrix;
-    std::vector<double> ec_realtime_buy;
+    UtilityRate * utilityRate;
 
     /* Automated Dispatch */
     size_t look_ahead_hours;
@@ -128,15 +122,19 @@ protected:
 
     void battery_FOM_automated_from_data(var_table &vt);
 
+    void initialize_models();
+
 public:
     explicit battery_FOM_automated();
 
     void from_data(var_table &vt) override;
 };
 
-class battery_FOM_manual : public battery_FOM
+class battery_FOM_manual : public storage_interface
 {
 protected:
+    const storage_FOM_params FOM;
+
     storage_manual_dispatch_params manual_dispatch;
 
     void battery_FOM_manual_from_data(var_table &vt);
@@ -147,9 +145,11 @@ public:
     void from_data(var_table &vt) override;
 };
 
-class battery_FOM_custom : public battery_FOM
+class battery_FOM_custom : public storage_interface
 {
 protected:
+    const storage_FOM_params FOM;
+
     std::vector<double> custom_dispatch_kw;
 
     void battery_FOM_custom_from_data(var_table &vt);
@@ -171,7 +171,6 @@ protected:
     void battery_BTM_from_data(var_table& vt);
 
     /*! Models */
-    UtilityRate * utilityRate;
 public:
     explicit battery_BTM();
 
@@ -225,7 +224,7 @@ public:
 
 };
 
-class fuelcell : public storage {
+class fuelcell : public storage_interface {
 protected:
     const storage_replacement_params replacement;
 

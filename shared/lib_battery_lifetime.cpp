@@ -323,7 +323,7 @@ lifetime_calendar_t::lifetime_calendar_t(const battery_lifetime_params* params):
 params_p(params) {
     state.init(-1);
 
-    dt_day = params_p->dt_hour / util::hours_per_day;
+    dt_day = params_p->time->dt_hour / util::hours_per_day;
     if (params_p->calendar_choice == storage_params::CALENDAR_OPTIONS::CALENDAR_LOSS_TABLE) {
         // extract and sort calendar life info from table
         for (size_t i = 0; i != params_p->calendar_lifetime_matrix.nrows(); i++) {
@@ -352,7 +352,7 @@ double lifetime_calendar_t::runLifetimeCalendarModel(size_t idx, double T, doubl
         if (idx > state.last_idx)
         {
 
-            if (idx % util::hours_per_day / params_p->dt_hour == 0)
+            if (idx % util::hours_per_day / params_p->time->dt_hour == 0)
                 state.day_age_of_battery++;
 
             if (params_p->calendar_choice == storage_params::CALENDAR_OPTIONS::LITHIUM_ION_CALENDAR_MODEL)

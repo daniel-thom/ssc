@@ -34,9 +34,6 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // Forward declarations to reduce imports
 
-const double low_tolerance = 0.01;
-const double tolerance = 0.001;
-
 // Messages
 class message
 {
@@ -710,9 +707,6 @@ public:
 	battery_t();
 
 	battery_t(double dt, int batt_chem);
-
-	battery_t(double dt, const battery_properties_params *prop, const battery_lifetime_params *lifetime,
-              const battery_losses_params *losses);
 
 	// deep copy constructor (new memory), from battery to this
 	battery_t(const battery_t& battery);
