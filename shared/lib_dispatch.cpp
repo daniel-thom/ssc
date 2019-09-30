@@ -47,30 +47,31 @@ void dispatch_interface::finalize(size_t idx, double &I)
 
 message dispatch_interface::get_messages() { return _message; }
 
-void dispatch_interface::runDispatch(const storage_state &time, std::shared_ptr<battery_t> battery,
+void dispatch_interface::runDispatch(const storage_state &time, double &target_power,
                                      std::shared_ptr<battery_powerflow> powerflow)
 {
-    auto state_initial = battery->get_state();
     // Ensure the battery operates within the state-of-charge limits
-    powerflow->run_SOC_controller(state_initial);
+    powerflow->run_SOC_controller(target_power);
 
     // Ensure the battery isn't switching rapidly between charging and dischaging
-    powerflow->run_switch_controller(state_initial);
+    powerflow->run_switch_controller(target_power);
 
-    battery->set_state(state_initial);
+    if (target_power == 0){
+        return;
+    }
 
     // Calculate current, and ensure the battery falls within the current limits
-    double I = current_controller(_Battery->battery_voltage_nominal());
+    double I = powerflow->get_target_current(target_power);
 
     // Setup battery iteration
     bool iterate = true;
     size_t count = 0;
-    size_t lifetimeIndex = util::lifetimeIndex(year, hour_of_year, step, static_cast<size_t>(1 / _dt_hour));
+//    size_t lifetimeIndex = util::lifetimeIndex(year, hour_of_year, step, static_cast<size_t>(1 / _dt_hour));
 
     do {
 
         // Run Battery Model to update charge based on charge/discharge
-        _Battery->run(lifetimeIndex, I);
+        battery_model->run(lifetimeIndex, I);
 
         // Update how much power was actually used to/from battery
         I = _Battery->capacity_model()->I();
@@ -97,25 +98,6 @@ void dispatch_interface::runDispatch(const storage_state &time, std::shared_ptr<
     _prev_charging = _charging;
 }
 
-double dispatch_interface::power_tofrom_battery() { return m_batteryPower->powerBatteryAC; }
-double dispatch_interface::power_tofrom_grid() { return m_batteryPower->powerGrid; }
-double dispatch_interface::power_gen() { return m_batteryPower->powerGeneratedBySystem; }
-double dispatch_interface::power_pv_to_load() { return m_batteryPower->powerPVToLoad; }
-double dispatch_interface::power_battery_to_load() { return m_batteryPower->powerBatteryToLoad; }
-double dispatch_interface::power_grid_to_load() { return m_batteryPower->powerGridToLoad; }
-double dispatch_interface::power_fuelcell_to_load() { return m_batteryPower->powerFuelCellToLoad; }
-double dispatch_interface::power_pv_to_batt() { return m_batteryPower->powerPVToBattery; }
-double dispatch_interface::power_grid_to_batt() { return m_batteryPower->powerGridToBattery; }
-double dispatch_interface::power_fuelcell_to_batt() { return m_batteryPower->powerFuelCellToBattery; }
-double dispatch_interface::power_pv_to_grid() { return m_batteryPower->powerPVToGrid; }
-double dispatch_interface::power_battery_to_grid() { return m_batteryPower->powerBatteryToGrid; }
-double dispatch_interface::power_fuelcell_to_grid() {return m_batteryPower->powerFuelCellToGrid;}
-double dispatch_interface::power_conversion_loss() { return m_batteryPower->powerConversionLoss; }
-double dispatch_interface::power_system_loss() { return m_batteryPower->powerSystemLoss; }
-double dispatch_interface::battery_power_to_fill() { return _Battery->get_battery_power_to_fill(
-            m_batteryPower->stateOfChargeMax); }
-battery_powerflow * dispatch_interface::getBatteryPowerFlow() { return m_batteryPowerFlow.get(); }
-BatteryPower * dispatch_interface::getBatteryPower() { return m_batteryPower; }
 /*
 Manual Dispatch
 */
@@ -129,7 +111,7 @@ dispatch_manual_t::dispatch_manual_t(battery_t * Battery, double dt, double SOC_
                      t_min, mode, battMeterPosition)
 {
     // initialize battery power flow
-    std::unique_ptr<battery_powerflow> tmp(new battery_powerflow(dt_hour));
+    std::unique_ptr<battery_powerflow> tmp(new battery_powerflow(dt_hour, <#initializer#>));
     m_batteryPowerFlow = std::move(tmp);
     m_batteryPower = m_batteryPowerFlow->getBatteryPower();
     m_batteryPower->currentChargeMax = Ic_max;
@@ -248,7 +230,7 @@ void dispatch_manual_t::dispatch(size_t year,
     m_batteryPowerFlow->initialize(_Battery->capacity_model()->SOC());
 
     // Run the dispatch
-    runDispatch(<#initializer#>, std::shared_ptr<battery_t>(), std::shared_ptr<battery_powerflow>());
+    runDispatch(<#initializer#>, <#initializer#>, std::shared_ptr<battery_powerflow>());
 }
 
 bool dispatch_manual_t::check_constraints(double &I, size_t count, const battery_state batt_state,
@@ -403,7 +385,7 @@ dispatch_automatic_t::dispatch_automatic_t(
                t_min, dispatch_mode, pv_dispatch)
 {
 // initialize battery power flow
-    std::unique_ptr<battery_powerflow> tmp(new battery_powerflow(dt_hour));
+    std::unique_ptr<battery_powerflow> tmp(new battery_powerflow(dt_hour, <#initializer#>));
     m_batteryPowerFlow = std::move(tmp);
     m_batteryPower = m_batteryPowerFlow->getBatteryPower();
     m_batteryPower->currentChargeMax = Ic_max;
@@ -509,7 +491,7 @@ void dispatch_automatic_t::dispatch(size_t year,
                                     size_t hour_of_year,
                                     size_t step)
 {
-    runDispatch(<#initializer#>, std::shared_ptr<battery_t>(), std::shared_ptr<battery_powerflow>());
+    runDispatch(<#initializer#>, <#initializer#>, std::shared_ptr<battery_powerflow>());
 }
 
 
@@ -1412,7 +1394,7 @@ void dispatch_resiliency::dispatch(size_t year, size_t hour_of_year, size_t step
     m_batteryPower->powerBatteryTarget = battery_use[lifetimeIndex % (8760 * step_per_hour)];
     m_batteryPower->powerBatteryDC = m_batteryPower->powerBatteryTarget;
 
-    runDispatch(<#initializer#>, std::shared_ptr<battery_t>(), std::shared_ptr<battery_powerflow>());
+    runDispatch(<#initializer#>, <#initializer#>, std::shared_ptr<battery_powerflow>());
 
 }
 
@@ -1452,7 +1434,7 @@ double battery_metrics_t::energy_grid_export_annual(){ return _e_grid_export_ann
 double battery_metrics_t::energy_loss_annual(){ return _e_loss_annual; }
 double battery_metrics_t::energy_system_loss_annual(){ return _e_loss_system_annual; };
 
-void battery_metrics_t::compute_metrics_ac(const BatteryPower * batteryPower)
+void battery_metrics_t::compute_metrics_ac(const dispatch_powerflow_state * batteryPower)
 {
     accumulate_grid_annual(batteryPower->powerGrid);
     accumulate_battery_charge_components(batteryPower->powerBatteryAC, batteryPower->powerPVToBattery, batteryPower->powerGridToBattery);

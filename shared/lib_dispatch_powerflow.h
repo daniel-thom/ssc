@@ -75,7 +75,7 @@ class battery_powerflow
 {
 public:
     /// Create a BatteryPowerFlow object
-    battery_powerflow(const battery_power_params&);
+    battery_powerflow(battery_power_params p, const battery_properties_params &b, SharedInverter* s = nullptr);
 
     /// Perform a deep copy of a BatteryFlow object
     battery_powerflow(const battery_powerflow& flow);
@@ -89,19 +89,27 @@ public:
     /// Calculate the power flow for the battery system
     void calculate_powerflow();
 
-    void run_switch_controller(battery_state& batt_state);
+    void apply_dispatch(const storage_state& s, double& target_power);
 
-    void run_SOC_controller(battery_state& batt_state);
+    void run_switch_controller(double &target_power);
+
+    void run_SOC_controller(double &target_power);
+
+    double get_target_current(const double target_power);
 
     /// Method to check any operational constraints and modify the battery current if needed
     bool apply_constraints(size_t& count, battery_state& batt_state);
+
+    dispatch_powerflow_state get_state() const {return state;}
 
 private:
     dispatch_powerflow_state state;   /// A structure containing the AC power flow components
 
     const battery_power_params params;
 
-    SharedInverter * shared_inverter;	 ///< The shared inverter between the PV and battery for a DC-connected system
+    std::shared_ptr<battery> battery_model;
+
+    std::shared_ptr<SharedInverter> shared_inverter;	 ///< The shared inverter between the PV and battery for a DC-connected system
 
     /**
     * \function calculateACConnected
@@ -127,7 +135,6 @@ private:
 
     bool apply_power_restrictions(double& I, double& V);
 
-    double run_current_controller(double battery_voltage);
 
 
 };

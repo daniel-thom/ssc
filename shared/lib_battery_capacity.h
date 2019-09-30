@@ -14,8 +14,8 @@ struct capacity_state{
     double SOC; // [%] - State of Charge
     double DOD; // [%] - Depth of Discharge
     double DOD_prev; // [%] - Depth of Discharge of previous step
-    int prev_charge_mode; // {CHARGE, NO_CHARGE, DISCHARGE}
     int charge_mode; // {CHARGE, NO_CHARGE, DISCHARGE}
+    int prev_charge_mode; // {CHARGE, NO_CHARGE, DISCHARGE}
 
     struct {
         double q1_0; // [Ah] - charge available
@@ -32,13 +32,13 @@ struct capacity_state{
 Base class from which capacity models derive
 Note, all capacity models are based on the capacity of one battery
 */
-class capacity_interface {
+class battery_capacity_interface {
 public:
 
-    capacity_interface();
+    battery_capacity_interface();
 
     // virtual destructor
-    virtual ~capacity_interface() {};
+    virtual ~battery_capacity_interface() {};
 
     // pure virtual functions (abstract) which need to be defined in derived classes
     virtual void updateCapacity(double &I) = 0;
@@ -61,22 +61,25 @@ protected:
     static void apply_SOC_limits(capacity_state &state, const battery_capacity_params &params);
 
     static void update_SOC(capacity_state &state);
+
+    static void recalculate_state(capacity_state &state);
+
 };
 
 /*
 KiBaM specific capacity model
 */
 
-class capacity_kibam_t : public capacity_interface
+class capacity_kibam : public battery_capacity_interface
 {
 public:
 
     // Public APIs
-    capacity_kibam_t(const battery_capacity_params& p);
-    ~capacity_kibam_t(){}
+    capacity_kibam(const battery_capacity_params& p);
+    ~capacity_kibam(){}
 
     // copy from capacity to this
-    capacity_kibam_t(const capacity_kibam_t&);
+    capacity_kibam(const capacity_kibam&);
 
     void updateCapacity(double &I);
     void updateCapacityForThermal(double capacity_percent);
@@ -123,14 +126,14 @@ protected:
 /*
 Lithium Ion specific capacity model
 */
-class capacity_lithium_ion_t : public capacity_interface
+class capacity_lithium_ion : public battery_capacity_interface
 {
 public:
-    capacity_lithium_ion_t(const battery_capacity_params& p);
-    ~capacity_lithium_ion_t(){};
+    capacity_lithium_ion(const battery_capacity_params& p);
+    ~capacity_lithium_ion(){};
 
     // copy from capacity to this
-    capacity_lithium_ion_t(const capacity_lithium_ion_t&);
+    capacity_lithium_ion(const capacity_lithium_ion&);
 
     // override public api
     void updateCapacity(double &I) override;
@@ -151,6 +154,7 @@ protected:
     capacity_state state;
 
     battery_capacity_params params;
+
 };
 
 

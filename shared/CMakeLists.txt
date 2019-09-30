@@ -63,12 +63,17 @@ set(SHARED_SRC
 
 	lib_battery_capacity.cpp
 	lib_battery_voltage.cpp
-	lib_storage.cpp
+#	lib_storage.cpp
 	lib_storage_params.cpp
 	lib_storage_outputs.cpp
 
+	lib_battery_lifetime.cpp
+	lib_battery_model.cpp
+	lib_dispatch_params.cpp
+#	lib_dispatch.cpp
+	lib_dispatch_powerflow.cpp
 	vartab.cpp
-	lib_battery_lifetime.cpp lib_battery_model.cpp lib_battery_model.h lib_dispatch_params.cpp lib_dispatch_params.h lib_dispatch.cpp lib_dispatch.h lib_dispatch_powerflow.cpp lib_dispatch_powerflow.h)
+		)
 
 
 #####################################################################################################################

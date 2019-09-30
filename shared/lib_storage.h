@@ -5,6 +5,7 @@
 
 #include "lib_storage_outputs.h"
 #include "lib_storage_params.h"
+#include "lib_dispatch_params.h"
 
 class SharedInverter;
 class lifetime_cycle_t;
@@ -94,7 +95,7 @@ public:
 /**
  * Front of the meter battery models
  */
-class battery_FOM : public battery
+class battery_FOM : public storage_interface
 {
 protected:
     const storage_FOM_params FOM;
@@ -163,7 +164,7 @@ public:
 /**
  * Behind the meter battery models
  */
-class battery_BTM : public battery
+class battery_BTM : public storage_interface
 {
 protected:
     std::vector<double> target_power;

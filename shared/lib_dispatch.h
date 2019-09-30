@@ -34,8 +34,8 @@ public:
 protected:
 
     /// Helper function to run common dispatch tasks.  Requires that m_batteryPower->powerBattery is previously defined
-    static void runDispatch(const storage_state &time, std::shared_ptr<battery_t> battery,
-                             std::shared_ptr<battery_powerflow> powerflow);
+    static void runDispatch(const storage_state &time, double &target_power,
+                            std::shared_ptr<battery_powerflow> powerflow);
 
     // Initialization help
     void init(battery_t * Battery,
@@ -87,9 +87,6 @@ public:
 
     // deep copy constructor (new memory), from dispatch to this
     dispatch_manual_t(const dispatch_interface& dispatch);
-
-    // copy members from dispatch to this
-    void copy(const dispatch_interface * dispatch) override;
 
     virtual ~dispatch_manual_t(){};
 
@@ -203,8 +200,6 @@ public:
             bool can_grid_charge,
             bool can_fuelcell_charge
     );
-
-    dispatch_automatic_t
 
     virtual ~dispatch_automatic_t(){};
 
@@ -548,7 +543,7 @@ public:
     battery_metrics_t(double dt_hour);
     ~battery_metrics_t(){};
 
-    void compute_metrics_ac(const BatteryPower * batteryPower);
+    void compute_metrics_ac(const dispatch_powerflow_state * batteryPower);
     //void compute_metrics_dc(const BatteryPower * batteryPower);
     void compute_annual_loss();
 

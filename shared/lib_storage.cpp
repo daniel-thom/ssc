@@ -9,18 +9,11 @@
 #include "vartab.h"
 
 storage_interface::storage_interface():
-    storage_type(-1),
-    config(storage_config_params()),
-    time(storage_time_params()),
-    forecast(storage_forecast()),
-    state(storage_state()),
-    accumulated_outputs(storage_accumulated_outputs()),
-    charge_outputs(storage_state_outputs()),
-    dispatch_model(nullptr){
+    storage_type(-1){
+
 }
 
 storage_interface::~storage_interface() {
-    delete dispatch_model;
 }
 
 storage_interface* storage_interface::Create(int storage_type) {

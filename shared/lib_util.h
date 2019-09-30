@@ -288,7 +288,6 @@ namespace util
                 t_array = other.t_array;
                 other.t_array = new T[1];
 		    }
-		    return *this;
 		}
 
 		matrix_t(size_t len)

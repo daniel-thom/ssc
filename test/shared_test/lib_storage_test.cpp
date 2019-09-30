@@ -28,6 +28,6 @@ public:
 };
 
 TEST_F(Storage_lib_storage, SetUp){
-    batt = storage_interface::Create(BATT_BTM_AUTO);
-    batt->from_data(*vt);
+//    batt = storage_interface::Create(BATT_BTM_AUTO);
+//    batt->from_data(*vt);
 }

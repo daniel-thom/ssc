@@ -20,15 +20,15 @@ struct cycle_lifetime_state {
 Lifetime cycling class.
 */
 
-class lifetime_cycle_t
+class lifetime_cycle
 {
 
 public:
-    explicit lifetime_cycle_t(const battery_lifetime_params*);
+    explicit lifetime_cycle(const battery_lifetime_params*);
 
-    virtual ~lifetime_cycle_t();
+    virtual ~lifetime_cycle();
 
-    lifetime_cycle_t(const lifetime_cycle_t &);
+    lifetime_cycle(const lifetime_cycle &);
 
     /// return q, the effective capacity percent
     double runCycleLifetime(double DOD);
@@ -86,18 +86,18 @@ struct calendar_lifetime_state {
 /*
 Lifetime calendar model
 */
-class lifetime_calendar_t
+class lifetime_calendar
 {
 public:
-    explicit lifetime_calendar_t();
+    explicit lifetime_calendar();
 
-    lifetime_calendar_t(const battery_lifetime_params*);
+    lifetime_calendar(const battery_lifetime_params*);
 
-    explicit lifetime_calendar_t(double q0=1.02, double a=2.66e-3, double b=7280, double c=930, double dt_hour=1);
+    explicit lifetime_calendar(double q0=1.02, double a=2.66e-3, double b=7280, double c=930, double dt_hour=1);
 
-    lifetime_calendar_t(const lifetime_calendar_t&);
+    lifetime_calendar(const lifetime_calendar&);
 
-    virtual ~lifetime_calendar_t(){/* Nothing to do */};
+    virtual ~lifetime_calendar(){/* Nothing to do */};
 
     /// Given the index of the simulation, the tempertature and SOC, return the effective capacity percent
     double runLifetimeCalendarModel(size_t idx, double T, double SOC);
@@ -139,15 +139,15 @@ struct lifetime_state{
 /*
 Class to encapsulate multiple lifetime models, and linearly combined the associated degradation and handle replacements
 */
-class lifetime_t
+class battery_lifetime
 {
 public:
 
-    lifetime_t(const battery_lifetime_params& params);
+    battery_lifetime(const battery_lifetime_params& params);
 
-    lifetime_t(const lifetime_t &);
+    battery_lifetime(const battery_lifetime &);
 
-    virtual ~lifetime_t(){};
+    virtual ~battery_lifetime(){};
 
     /// Execute the lifetime models given the current lifetime run index, capacity model, and temperature
     void runLifetimeModels(const storage_state& time, const capacity_state& cap, double T_battery);
@@ -189,10 +189,10 @@ protected:
     lifetime_state state;
 
     /// Underlying lifetime cycle model
-    std::unique_ptr<lifetime_cycle_t> cycle_model;
+    std::unique_ptr<lifetime_cycle> cycle_model;
 
     /// Underlying lifetime calendar model
-    std::unique_ptr<lifetime_calendar_t> calendar_model;
+    std::unique_ptr<lifetime_calendar> calendar_model;
 };
 
 

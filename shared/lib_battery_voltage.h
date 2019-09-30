@@ -39,12 +39,12 @@ All voltage models are based on one-cell, but return the voltage for one battery
 */
 class thermal_t;
 struct capacity_state;
-class voltage_interface
+class battery_voltage_interface
 {
 public:
-    explicit voltage_interface() {}
+    explicit battery_voltage_interface() {}
 
-    virtual ~voltage_interface(){};
+    virtual ~battery_voltage_interface(){};
 
     virtual void updateVoltage(const capacity_state &capacity, double T_battery_K = 0) = 0;
 
@@ -79,12 +79,12 @@ struct byDOD
 };
 
 
-class voltage_table_t : public voltage_interface
+class voltage_table : public battery_voltage_interface
 {
 public:
-    voltage_table_t(const battery_voltage_params& p);
+    voltage_table(const battery_voltage_params& p);
 
-    voltage_table_t(const voltage_table_t&);
+    voltage_table(const voltage_table&);
 
     void updateVoltage(const capacity_state &capacity, double T_battery_K = 0) override;
 
@@ -102,7 +102,7 @@ private:
 
     const battery_voltage_params params;
 
-    std::vector<table_point> voltage_table;
+    std::vector<table_point> v_table;
 
     bool exactVoltageFound(double DOD, double &V);
     void prepareInterpolation(double & DOD_lo, double & V_lo, double & DOD_hi, double & V_hi, double DOD);
@@ -110,13 +110,13 @@ private:
 };
 
 // Shepard + Tremblay Model
-class voltage_dynamic_t : public voltage_interface
+class voltage_dynamic : public battery_voltage_interface
 {
 public:
-    voltage_dynamic_t(const battery_voltage_params& p);
+    voltage_dynamic(const battery_voltage_params& p);
 
     // copy from voltage to this
-    voltage_dynamic_t(const voltage_dynamic_t&);
+    voltage_dynamic(const voltage_dynamic&);
 
     void parameter_compute();
     void updateVoltage(const capacity_state &capacity, double T_battery_K) override;
@@ -145,13 +145,13 @@ protected:
 };
 
 // D'Agostino Vanadium Redox Flow Model
-class voltage_vanadium_redox_t : public voltage_interface
+class voltage_vanadium_redox : public battery_voltage_interface
 {
 public:
-    explicit voltage_vanadium_redox_t(const battery_voltage_params& p);
+    explicit voltage_vanadium_redox(const battery_voltage_params& p);
 
     // copy from voltage to this
-    voltage_vanadium_redox_t(const voltage_vanadium_redox_t &);
+    voltage_vanadium_redox(const voltage_vanadium_redox &);
 
     void updateVoltage(const capacity_state &capacity, double T_battery_K) override;
 

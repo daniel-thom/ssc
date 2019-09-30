@@ -30,7 +30,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <algorithm>
 
 #include "lib_util.h"
-#include "lib_storage_params.h"
+#include "lib_battery_model.h"
 
 // Forward declarations to reduce imports
 
@@ -245,26 +245,6 @@ protected:
 	double _R_battery;            // internal battery resistance (Ohm)
 	util::matrix_t<double> _batt_voltage_matrix;  // voltage vs depth-of-discharge
 };
-
-// A row in the table
-class table_point
-{
-public:
-	table_point(double DOD = 0., double V = 0.) :
-		_DOD(DOD), _V(V){}
-	double DOD() const{ return _DOD; }
-	double V() const{ return _V; }
-
-private:
-	double _DOD;
-	double _V;
-};
-
-struct byDOD
-{
-	bool operator()(table_point const &a, table_point const &b){ return a.DOD() < b.DOD(); }
-};
-
 
 class voltage_table_t : public voltage_t
 {

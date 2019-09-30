@@ -1,5 +1,7 @@
-#include "lib_dispatch_params.h"
+#include "lib_time.h"
 
+#include "lib_shared_inverter.h"
+#include "lib_dispatch_params.h"
 
 void storage_forecast::initialize_from_data(var_table &vt) {
     prediction_index = 0;
@@ -8,7 +10,7 @@ void storage_forecast::initialize_from_data(var_table &vt) {
     cliploss_prediction = std::vector<double>(pv_prediction.size(), 0);
 }
 
-void storage_FOM_params_from_data(storage_FOM_params* params, var_table& vt, size_t step_per_hour){
+void storage_FOM_params::initialize_from_data(var_table& vt, size_t step_per_hour){
     pv_clipping_forecast = vt.as_vector_double("batt_pv_clipping_forecast");
     pv_dc_power_forecast = vt.as_vector_double("batt_pv_dc_forecast");
     double ppa_price = vt.as_double("ppa_price_input");
@@ -32,7 +34,7 @@ void storage_FOM_params_from_data(storage_FOM_params* params, var_table& vt, siz
     cycle_cost = vt.as_double("batt_cycle_cost");
 }
 
-void storage_automated_dispatch_params_from_data(storage_automated_dispatch_params* params, var_table& vt){
+void storage_automated_dispatch_params::initialize_from_data(var_table& vt){
     dispatch_auto_can_charge = true;
     dispatch_auto_can_clipcharge = true;
     dispatch_auto_can_gridcharge = false;
@@ -52,7 +54,7 @@ void storage_automated_dispatch_params_from_data(storage_automated_dispatch_para
     }
 }
 
-void storage_manual_dispatch_params_from_data(storage_manual_dispatch_params* params, var_table& vt){
+void storage_manual_dispatch_params::initialize_from_data(var_table& vt){
     can_charge = vt.as_vector_bool("dispatch_manual_charge");
     can_discharge = vt.as_vector_bool("dispatch_manual_discharge");
     can_gridcharge = vt.as_vector_bool("dispatch_manual_gridcharge");
@@ -62,58 +64,57 @@ void storage_manual_dispatch_params_from_data(storage_manual_dispatch_params* pa
     discharge_schedule_weekend = vt.as_matrix_unsigned_long("dispatch_manual_sched_weekend");
 }
 
-void battery_charging_params_from_data(battery_charging_params* params, var_table& vt){
-    params->current_choice = vt.as_integer("batt_current_choice");
+void battery_charging_params::initialize_from_data(var_table& vt){
+    current_choice = vt.as_integer("batt_current_choice");
     minimum_modetime = vt.as_double("batt_minimum_modetime");
 
-    if (params->current_choice == storage_params::CURRENT_CHOICE::RESTRICT_CURRENT ||
-        params->current_choice == storage_params::CURRENT_CHOICE::RESTRICT_BOTH){
-        params->current_charge_max = vt.as_double("batt_current_charge_max");
-        params->current_discharge_max = vt.as_double("batt_current_discharge_max");
+    if (current_choice == dispatch_params::CURRENT_CHOICE::RESTRICT_CURRENT ||
+        current_choice == dispatch_params::CURRENT_CHOICE::RESTRICT_BOTH){
+        current_charge_max = vt.as_double("batt_current_charge_max");
+        current_discharge_max = vt.as_double("batt_current_discharge_max");
     }
-    if (params->current_choice == storage_params::CURRENT_CHOICE::RESTRICT_POWER ||
-        params->current_choice == storage_params::CURRENT_CHOICE::RESTRICT_BOTH) {
-        params->power_charge_max_kwdc = vt.as_double("batt_power_charge_max_kwdc");
-        params->power_discharge_max_kwdc = vt.as_double("batt_power_discharge_max_kwdc");
-        params->power_charge_max_kwac = vt.as_double("batt_power_charge_max_kwac");
-        params->power_discharge_max_kwac = vt.as_double("batt_power_discharge_max_kwac");
+    if (current_choice == dispatch_params::CURRENT_CHOICE::RESTRICT_POWER ||
+        current_choice == dispatch_params::CURRENT_CHOICE::RESTRICT_BOTH) {
+        power_charge_max_kwdc = vt.as_double("batt_power_charge_max_kwdc");
+        power_discharge_max_kwdc = vt.as_double("batt_power_discharge_max_kwdc");
+        power_charge_max_kwac = vt.as_double("batt_power_charge_max_kwac");
+        power_discharge_max_kwac = vt.as_double("batt_power_discharge_max_kwac");
     }
 }
 
-void battery_inverter_params_from_data(battery_inverter_params* params, var_table& vt){
+void battery_inverter_params::initialize_from_data(var_table& vt){
     if (vt.is_assigned("inverter_model"))
     {
-        params->inverter_model = vt.as_integer("inverter_model");
-        params->inverter_count = vt.as_integer("inverter_count");
-        inverter_efficiency_cutoff = vt.as_double("batt_inverter_efficiency_cutoff");
+        inverter_model = vt.as_integer("inverter_model");
+        inverter_count = vt.as_integer("inverter_count");
 
-        if (params->inverter_model == SharedInverter::SANDIA_INVERTER)
+        if (inverter_model == SharedInverter::SANDIA_INVERTER)
         {
-            params->inverter_efficiency = vt.as_double("inv_snl_eff_cec");
-            params->inverter_paco = params->inverter_count * vt.as_double("inv_snl_paco") * util::watt_to_kilowatt;
+            inverter_efficiency = vt.as_double("inv_snl_eff_cec");
+            inverter_paco = inverter_count * vt.as_double("inv_snl_paco") * util::watt_to_kilowatt;
         }
-        else if (params->inverter_model == SharedInverter::DATASHEET_INVERTER)
+        else if (inverter_model == SharedInverter::DATASHEET_INVERTER)
         {
-            params->inverter_efficiency = vt.as_double("inv_ds_eff");
-            params->inverter_paco = params->inverter_count * vt.as_double("inv_ds_paco") * util::watt_to_kilowatt;
+            inverter_efficiency = vt.as_double("inv_ds_eff");
+            inverter_paco = inverter_count * vt.as_double("inv_ds_paco") * util::watt_to_kilowatt;
 
         }
-        else if (params->inverter_model == SharedInverter::PARTLOAD_INVERTER)
+        else if (inverter_model == SharedInverter::PARTLOAD_INVERTER)
         {
-            params->inverter_efficiency = vt.as_double("inv_pd_eff");
-            params->inverter_paco = params->inverter_count * vt.as_double("inv_pd_paco") * util::watt_to_kilowatt;
+            inverter_efficiency = vt.as_double("inv_pd_eff");
+            inverter_paco = inverter_count * vt.as_double("inv_pd_paco") * util::watt_to_kilowatt;
         }
-        else if (params->inverter_model == SharedInverter::COEFFICIENT_GENERATOR)
+        else if (inverter_model == SharedInverter::COEFFICIENT_GENERATOR)
         {
-            params->inverter_efficiency = vt.as_double("inv_cec_cg_eff_cec");
-            params->inverter_paco = params->inverter_count * vt.as_double("inv_cec_cg_paco") * util::watt_to_kilowatt;
+            inverter_efficiency = vt.as_double("inv_cec_cg_eff_cec");
+            inverter_paco = inverter_count * vt.as_double("inv_cec_cg_paco") * util::watt_to_kilowatt;
         }
     }
     else
     {
-        params->inverter_model = SharedInverter::NONE;
-        params->inverter_count = 1;
-        params->inverter_efficiency = vt.as_double("batt_ac_dc_efficiency");
-        params->inverter_paco = vt.as_double("batt_power_discharge_max_kwdc");
+        inverter_model = SharedInverter::NONE;
+        inverter_count = 1;
+        inverter_efficiency = vt.as_double("batt_ac_dc_efficiency");
+        inverter_paco = vt.as_double("batt_power_discharge_max_kwdc");
     }
 }

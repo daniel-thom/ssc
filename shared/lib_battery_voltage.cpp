@@ -6,26 +6,26 @@ Define Voltage Model
 */
 
 // Voltage Table
-voltage_table_t::voltage_table_t(const battery_voltage_params& p):
+voltage_table::voltage_table(const battery_voltage_params& p):
 params(p)
 {
     cell_voltage_state = p.Vnom_default;
     for (int r = 0; r != (int)p.voltage_matrix.nrows(); r++)
-        voltage_table.emplace_back(table_point(p.voltage_matrix.at(r, 0), p.voltage_matrix.at(r, 1)));
+        v_table.emplace_back(table_point(p.voltage_matrix.at(r, 0), p.voltage_matrix.at(r, 1)));
 
-    std::sort(voltage_table.begin(), voltage_table.end(), byDOD());
+    std::sort(v_table.begin(), v_table.end(), byDOD());
 }
 
 
-voltage_table_t::voltage_table_t(const voltage_table_t& voltage):
+voltage_table::voltage_table(const voltage_table& voltage):
 params(voltage.get_params())
 {
     cell_voltage_state = voltage.cell_voltage_state;
-    voltage_table = voltage.voltage_table;
+    v_table = voltage.v_table;
 }
 
 
-void voltage_table_t::updateVoltage(const capacity_state &capacity, double)
+void voltage_table::updateVoltage(const capacity_state &capacity, double)
 {
     double cell_voltage = cell_voltage_state;
     double DOD = capacity.DOD;
@@ -44,14 +44,14 @@ void voltage_table_t::updateVoltage(const capacity_state &capacity, double)
 
 }
 
-bool voltage_table_t::exactVoltageFound(double DOD, double & V)
+bool voltage_table::exactVoltageFound(double DOD, double & V)
 {
     bool contained = false;
-    for (size_t r = 0; r != voltage_table.size(); r++)
+    for (size_t r = 0; r != v_table.size(); r++)
     {
-        if (voltage_table[r].DOD() == DOD)
+        if (v_table[r].DOD() == DOD)
         {
-            V = voltage_table[r].V();
+            V = v_table[r].V();
             contained = true;
             break;
         }
@@ -59,18 +59,18 @@ bool voltage_table_t::exactVoltageFound(double DOD, double & V)
     return contained;
 }
 
-void voltage_table_t::prepareInterpolation(double & DOD_lo, double & V_lo, double & DOD_hi, double & V_hi, double DOD)
+void voltage_table::prepareInterpolation(double & DOD_lo, double & V_lo, double & DOD_hi, double & V_hi, double DOD)
 {
-    size_t nrows = voltage_table.size();
-    DOD_lo = voltage_table[0].DOD();
-    DOD_hi = voltage_table[nrows - 1].DOD();
-    V_lo = voltage_table[0].V();
-    V_hi = voltage_table[nrows - 1].V();
+    size_t nrows = v_table.size();
+    DOD_lo = v_table[0].DOD();
+    DOD_hi = v_table[nrows - 1].DOD();
+    V_lo = v_table[0].V();
+    V_hi = v_table[nrows - 1].V();
 
     for (size_t r = 0; r != nrows; r++)
     {
-        double DOD_r = voltage_table[r].DOD();
-        double V_r = voltage_table[r].V();
+        double DOD_r = v_table[r].DOD();
+        double V_r = v_table[r].V();
 
         if (DOD_r <= DOD)
         {
@@ -88,7 +88,7 @@ void voltage_table_t::prepareInterpolation(double & DOD_lo, double & V_lo, doubl
 }
 
 
-voltage_dynamic_t::voltage_dynamic_t(const battery_voltage_params& p):
+voltage_dynamic::voltage_dynamic(const battery_voltage_params& p):
 params(p)
 {
     // assume fully charged, not the nominal value
@@ -98,7 +98,7 @@ params(p)
 }
 
 
-voltage_dynamic_t::voltage_dynamic_t(const voltage_dynamic_t& voltage):
+voltage_dynamic::voltage_dynamic(const voltage_dynamic& voltage):
 params(voltage.get_params())
 {
     cell_voltage_state = voltage.cell_voltage_state;
@@ -107,7 +107,7 @@ params(voltage.get_params())
     E0 = voltage.E0;
     K = voltage.K;
 }
-void voltage_dynamic_t::parameter_compute()
+void voltage_dynamic::parameter_compute()
 {
     // Determines parameters according to page 2 of:
     // Tremblay 2009 "A Generic Bettery Model for the Dynamic Simulation of Hybrid Electric Vehicles"
@@ -120,7 +120,7 @@ void voltage_dynamic_t::parameter_compute()
     E0 = params.Vfull + K + params.resistance * I - A;
 }
 
-void voltage_dynamic_t::updateVoltage(const capacity_state &capacity, double )
+void voltage_dynamic::updateVoltage(const capacity_state &capacity, double )
 {
     double Q = capacity.qmax;
     double I = capacity.I;
@@ -135,7 +135,7 @@ void voltage_dynamic_t::updateVoltage(const capacity_state &capacity, double )
         cell_voltage_state = cell_voltage;
 }
 
-double voltage_dynamic_t::voltage_model_tremblay_hybrid(double Q, double I, double q0)
+double voltage_dynamic::voltage_model_tremblay_hybrid(double Q, double I, double q0)
 {
     // everything in here is on a per-cell basis
     // Tremblay Dynamic Model
@@ -152,19 +152,19 @@ double voltage_dynamic_t::voltage_model_tremblay_hybrid(double Q, double I, doub
 }
 
 // Vanadium redox flow model
-voltage_vanadium_redox_t::voltage_vanadium_redox_t(const battery_voltage_params& p):
+voltage_vanadium_redox::voltage_vanadium_redox(const battery_voltage_params& p):
 params(p)
 {
     cell_voltage_state = p.Vnom_default;
 }
 
-voltage_vanadium_redox_t::voltage_vanadium_redox_t(const voltage_vanadium_redox_t& voltage):
+voltage_vanadium_redox::voltage_vanadium_redox(const voltage_vanadium_redox& voltage):
 params(voltage.get_params())
 {
         cell_voltage_state = voltage.cell_voltage_state;
 }
 
-void voltage_vanadium_redox_t::updateVoltage(const capacity_state &capacity, double T_battery_K )
+void voltage_vanadium_redox::updateVoltage(const capacity_state &capacity, double T_battery_K )
 {
     double Q = capacity.qmax;
     double I = capacity.I;
@@ -181,7 +181,7 @@ void voltage_vanadium_redox_t::updateVoltage(const capacity_state &capacity, dou
         cell_voltage_state = cell_voltage;
 }
 
-double voltage_vanadium_redox_t::voltage_model(double qmax, double q0, double I_string, double T)
+double voltage_vanadium_redox::voltage_model(double qmax, double q0, double I_string, double T)
 {
     double SOC = q0 / qmax;
     double SOC_use = SOC;

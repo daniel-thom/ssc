@@ -8,25 +8,6 @@
 #include "lib_battery_voltage.h"
 #include "lib_battery_lifetime.h"
 
-// Messages
-class message
-{
-public:
-    message(){};
-    virtual ~message(){};
-
-
-    void add(std::string message);
-    size_t total_message_count();
-    size_t message_count(int index);
-    std::string get_message(int index);
-    std::string construct_log_count_string(int index);
-
-protected:
-    std::vector<std::string> messages;
-    std::vector<int> count;
-};
-
 /*
 Thermal classes
 */
@@ -34,17 +15,17 @@ struct thermal_state{
     double R;			// [Ohm] - internal resistance
     double T_battery;   // [K]
     double capacity_percent; //[%]
-    message message;
+    std::vector<std::string> messages;
 
     void init();
 };
 
-class thermal_t
+class battery_thermal
 {
 public:
-    thermal_t(const battery_thermal_params& p);
+    battery_thermal(const battery_thermal_params& p);
 
-    thermal_t(const thermal_t &);
+    battery_thermal(const battery_thermal &);
 
     static constexpr const double T_max = 400;
 
@@ -54,7 +35,6 @@ public:
     // outputs
     double get_T_battery();
     double get_capacity_percent();
-    message get_messages(){ return state.message; }
 
     thermal_state get_state() const {return state;}
     void set_state(const thermal_state& s) {state = s;}
@@ -77,7 +57,7 @@ private:
 };
 
 /**
-* \class losses_t
+* \class losses
 *
 * \brief
 *
@@ -86,14 +66,14 @@ private:
 *  which may be used in lieu of the losses for operational mode.
 */
 
-class losses_t
+class battery_losses
 {
 public:
 
-    losses_t(const battery_losses_params& p);
+    battery_losses(const battery_losses_params& p);
 
     /// Copy input losses to this object
-    losses_t(const losses_t&);
+    battery_losses(const battery_losses&);
 
     /// Run the losses model at the present simulation index (for year 1 only)
     void run_losses(const storage_state &time, const capacity_state &cap);
@@ -127,26 +107,29 @@ struct battery_state{
     size_t last_idx;
 };
 
-class battery_t
+class battery
 {
 public:
-    battery_t(const battery_properties_params& prop);
+    battery(const battery_properties_params& prop);
 
-    battery_t(const battery_t& battery);
+    battery(const battery& battery);
 
-    ~battery_t();
+    ~battery();
 
     // Run all for single time step
-    void run(const storage_state& time, double I);
+    void run(const storage_state& time, double& I);
+
+    // Compute how battery system to modification of a single state variable
+    void change_power(const double P);
 
     void set_state(const battery_state& state);
     battery_state get_state();
 
-    capacity_interface * capacity_model() const;
-    voltage_interface * voltage_model() const;
-    lifetime_t * lifetime_model() const;
-    thermal_t * thermal_model() const;
-    losses_t * losses_model() const;
+    battery_capacity_interface * capacity_model() const;
+    battery_voltage_interface * voltage_model() const;
+    battery_lifetime * lifetime_model() const;
+    battery_thermal * thermal_model() const;
+    battery_losses * losses_model() const;
 
     // Get capacity quantities
     double get_battery_charge_needed(double SOC_max);
@@ -167,18 +150,20 @@ private:
 
     const battery_properties_params& params;
 
-    capacity_interface * capacity;
-    thermal_t * thermal;
-    lifetime_t * lifetime;
-    voltage_interface * voltage;
-    losses_t * losses;
+    battery_capacity_interface * capacity;
+    battery_thermal * thermal;
+    battery_lifetime * lifetime;
+    battery_voltage_interface * voltage;
+    battery_losses * losses;
 
     // Run a component level model
-    void runCapacityModel(double &I);
-    void runVoltageModel();
-    void runThermalModel(double I, const storage_state &time);
-    void runLifetimeModel(const storage_state &time);
-    void runLossesModel(const storage_state &time);
+    void run_capacity_model(double &I);
+    void run_voltage_model();
+    void run_thermal_model(double I, const storage_state &time);
+    void run_lifetime_model(const storage_state &time);
+    void run_losses_model(const storage_state &time);
+
+
 
 };
 

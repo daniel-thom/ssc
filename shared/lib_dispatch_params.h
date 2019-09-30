@@ -42,9 +42,10 @@ struct battery_charging_params
     double power_discharge_max_kwdc;
     double power_charge_max_kwac;
     double power_discharge_max_kwac;
+
+    void initialize_from_data(var_table& vt);
 };
 
-void battery_charging_params_from_data(battery_charging_params* params, var_table& vt);
 
 // for DC-connected batteries
 struct battery_inverter_params
@@ -53,9 +54,10 @@ struct battery_inverter_params
     size_t inverter_count;
     double inverter_efficiency;
     double inverter_paco;
+
+    void initialize_from_data(var_table& vt);
 };
 
-void battery_inverter_params_from_data(battery_inverter_params* params, var_table& vt);
 
 struct battery_power_params
 {
@@ -76,6 +78,21 @@ struct battery_power_params
 
     battery_charging_params charging;
 
+    void initialize_from_data(var_table& vt){
+        kwh = vt.as_double("batt_computed_bank_capacity");
+        kw = vt.as_double("batt_power_discharge_max_kwdc");
+        connection = vt.as_integer("batt_ac_or_dc");
+        ac_dc_efficiency = vt.as_double("batt_ac_dc_efficiency");
+        dc_ac_efficiency = vt.as_double("batt_dc_ac_efficiency");
+        dc_dc_bms_efficiency = vt.as_double("batt_dc_dc_efficiency");
+        if (vt.is_assigned("dcoptimizer_loss")) {
+            pv_dc_dc_mppt_efficiency = 100. - vt.as_double("dcoptimizer_loss");
+        }
+        else {
+            pv_dc_dc_mppt_efficiency = 100;
+        }
+    }
+
 };
 
 struct storage_FOM_params{
@@ -88,9 +105,10 @@ struct storage_FOM_params{
     // Battery cycle costs
     int cycle_cost_choice;
     double cycle_cost;
+
+    void initialize_from_data(var_table& vt, size_t step_per_hour);
 };
 
-void storage_FOM_params_from_data(storage_FOM_params* params, var_table& vt, size_t step_per_hour);
 
 struct storage_automated_dispatch_params
 {
@@ -106,9 +124,9 @@ struct storage_automated_dispatch_params
     /* Determines if the battery is allowed to charge from fuel cell using automated control*/
     bool dispatch_auto_can_fuelcellcharge;
 
+    void initialize_from_data(var_table& vt);
 };
 
-void storage_automated_dispatch_params_from_data(storage_automated_dispatch_params* params, var_table& vt);
 
 struct storage_manual_dispatch_params
 {
@@ -135,9 +153,10 @@ struct storage_manual_dispatch_params
 
     /* Schedule of manual discharge for weekend*/
     util::matrix_t<size_t> discharge_schedule_weekend;
+
+    void initialize_from_data(var_table& vt);
 };
 
-void storage_manual_dispatch_params_from_data(storage_manual_dispatch_params* params, var_table& vt);
 
 
 #endif //SYSTEM_ADVISOR_MODEL_LIB_DISPATCH_PARAMS_H

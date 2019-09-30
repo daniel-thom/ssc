@@ -1,5 +1,4 @@
 #include "vartab.h"
-#include "lib_time.h"
 #include "lib_shared_inverter.h"
 #include "lib_storage_params.h"
 
@@ -40,7 +39,6 @@ void storage_replacement_params::initialize_from_data(var_table &vt, bool batt_n
 void storage_time_params::initialize_from_data(var_table &vt) {
     dt_hour = vt.as_number("dt_hr");
     step_per_hour = static_cast<size_t>(1. / dt_hour);
-    analysis_period = vt.as_integer("analysis_period");
     system_use_lifetime_output = vt.as_boolean("system_use_lifetime_output");
     if (system_use_lifetime_output)
         nyears = vt.as_integer("analysis_period");
@@ -49,7 +47,7 @@ void storage_time_params::initialize_from_data(var_table &vt) {
 }
 
 
-void battery_lifetime_params::initialize_from_data(var_table &vt, storage_time_params *t, bool batt_not_fuelcell){
+void battery_lifetime_params::initialize_from_data(var_table &vt, storage_time_params &t, bool batt_not_fuelcell){
     time = std::make_shared<storage_time_params>(t);
 
     lifetime_matrix = vt.as_matrix("batt_lifetime_matrix");
@@ -72,7 +70,7 @@ void battery_lifetime_params::initialize_from_data(var_table &vt, storage_time_p
     replacement.initialize_from_data(vt, batt_not_fuelcell);
 }
 
-void battery_losses_params::initialize_from_data(var_table &vt, storage_time_params *t){
+void battery_losses_params::initialize_from_data(var_table &vt, storage_time_params &t){
     time = std::make_shared<storage_time_params>(t);
     loss_monthly_or_timeseries = vt.as_integer("batt_loss_choice");
     auto charging = vt.as_vector_double("batt_losses_charging");
@@ -122,7 +120,7 @@ void battery_losses_params::initialize_from_data(var_table &vt, storage_time_par
     }
 }
 
-battery_voltage_params::initialize_from_data(var_table& vt){
+void battery_voltage_params::initialize_from_data(var_table& vt){
     num_cells_series = vt.as_integer("batt_computed_series");
     num_strings = vt.as_integer("batt_computed_strings");
 
@@ -147,7 +145,7 @@ battery_voltage_params::initialize_from_data(var_table& vt){
     }
 }
 
-void battery_thermal_params::initialize_from_data(var_table &vt, storage_time_params *t){
+void battery_thermal_params::initialize_from_data(var_table &vt, storage_time_params &t){
     time = std::make_shared<storage_time_params>(t);
     cap_vs_temp = vt.as_matrix("cap_vs_temp");
     mass = vt.as_double("batt_mass");
@@ -164,8 +162,8 @@ void battery_thermal_params::initialize_from_data(var_table &vt, storage_time_pa
     }
 }
 
-void battery_capacity_params::initialize_from_data(var_table &vt, double dt_hr) {
-    dt_hour = dt_hr;
+void battery_capacity_params::initialize_from_data(var_table &vt, storage_time_params &t) {
+    time = std::make_shared<storage_time_params>(t);
     int chem = vt.as_integer("batt_chem");
 
     initial_SOC = vt.as_double("batt_initial_SOC");
@@ -183,30 +181,16 @@ void battery_capacity_params::initialize_from_data(var_table &vt, double dt_hr) 
         qmax = vt.as_double("batt_Qfull") * vt.as_double("batt_computed_strings");
 }
 
-void battery_properties_params::initialize_from_data(var_table& vt){
+void battery_properties_params::initialize_from_data(var_table& vt, storage_time_params& t){
     chem = vt.as_integer("batt_chem");
 
-    init(&thermal, vt);
+    thermal.initialize_from_data(vt, t);
 
-    kwh = vt.as_double("batt_computed_bank_capacity");
-    kw = vt.as_double("batt_power_discharge_max_kwdc");
+    voltage_vars.initialize_from_data(vt);
 
-    initialize_from_data(&voltage_vars, vt);
+    capacity_vars.initialize_from_data(vt, t);
 
-    battery_capacity_params_from_data(&capacity_vars, vt, 0);
+    lifetime.initialize_from_data(vt, t, true);
 
-
-
-    connection = vt.as_integer("batt_ac_or_dc");
-    ac_dc_efficiency = vt.as_double("batt_ac_dc_efficiency");
-    dc_ac_efficiency = vt.as_double("batt_dc_ac_efficiency");
-    dc_dc_bms_efficiency = vt.as_double("batt_dc_dc_efficiency");
-    if (vt.is_assigned("dcoptimizer_loss")) {
-        pv_dc_dc_mppt_efficiency = 100. - vt.as_double("dcoptimizer_loss");
-    }
-    else {
-        pv_dc_dc_mppt_efficiency = 100;
-    }
-
-    battery_inverter_params_from_data(&inverter, vt);
+    losses.initialize_from_data(vt, t);
 }

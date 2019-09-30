@@ -46,7 +46,16 @@ struct storage_time_params
     double dt_hour;
 
     bool system_use_lifetime_output;                // true or false
-    int analysis_period;
+
+public:
+    storage_time_params(double dt_hr, int n_years){
+        dt_hour = dt_hr;
+        step_per_hour = static_cast<size_t>(1. / dt_hour);
+        nyears = n_years;
+        system_use_lifetime_output = false;
+        if (nyears > 1)
+            system_use_lifetime_output = true;
+    }
 
     void initialize_from_data(var_table &vt);
 };
@@ -85,7 +94,7 @@ struct battery_lifetime_params
 
     storage_replacement_params replacement;
 
-    void initialize_from_data(var_table &vt, storage_time_params*, bool batt_not_fuelcell);
+    void initialize_from_data(var_table &vt, storage_time_params&, bool batt_not_fuelcell);
 };
 
 
@@ -128,7 +137,7 @@ struct battery_thermal_params
     double h;                                   // [Wm2K] - general heat transfer coefficient
     std::vector<double> T_room_K;               // [K] - storage room temperature
 
-    void initialize_from_data(var_table& vt, storage_time_params*);
+    void initialize_from_data(var_table& vt, storage_time_params&);
 };
 
 struct battery_losses_params
@@ -141,7 +150,7 @@ struct battery_losses_params
     std::vector<double> losses_idle;
     std::vector<double> losses_full;
 
-    void initialize_from_data(var_table &vt, storage_time_params *time);
+    void initialize_from_data(var_table &vt, storage_time_params &time);
 };
 
 struct battery_capacity_params{
@@ -149,8 +158,8 @@ struct battery_capacity_params{
 
     double qmax;
     double initial_SOC;                     // 0-100
-    double maximum_SOC;
     double minimum_SOC;
+    double maximum_SOC;
     double maximum_DOD;
 
     struct{
@@ -160,16 +169,16 @@ struct battery_capacity_params{
         double q10;
     } lead_acid;
 
-    void initialize_from_data(var_table &vt, double dt_hr);
+    void initialize_from_data(var_table &vt, storage_time_params &time);
 };
 
 
 struct battery_properties_params
 {
     int chem;
+
     battery_thermal_params thermal;
 
-    // voltage properties using either voltage model or table
     battery_voltage_params voltage_vars;
 
     battery_capacity_params capacity_vars;
@@ -178,7 +187,7 @@ struct battery_properties_params
 
     battery_losses_params losses;
 
-    void initialize_from_data(var_table& vt);
+    void initialize_from_data(var_table& vt, storage_time_params& t);
 };
 
 

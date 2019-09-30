@@ -67,12 +67,18 @@ void dispatch_powerflow_state::reset()
     voltageSystem = 0;
 }
 
-battery_powerflow::battery_powerflow(const battery_power_params& p):
-params(p){
+battery_powerflow::battery_powerflow(battery_power_params p, const battery_properties_params &b, SharedInverter* s) :
+params(std::move(p)),
+battery_model(new battery(b)),
+shared_inverter(s){
+    if (params.connection == dispatch_params::CONNECTION::DC_CONNECTED && !shared_inverter)
+        throw general_error("Creating a DC-connected battery_powerflow requires a SharedInverter");
 }
 
 battery_powerflow::battery_powerflow(const battery_powerflow& f):
-params(f.params){
+params(f.params),
+battery_model(f.battery_model),
+shared_inverter(f.shared_inverter){
     state = f.state;
 }
 
@@ -84,6 +90,54 @@ void battery_powerflow::calculate_powerflow()
     else if (params.connection == dispatch_params::CONNECTION::DC_CONNECTED) {
         calculateDCConnected();
     }
+}
+
+void battery_powerflow::apply_dispatch(const storage_state& s, double &target_power) {
+    // Ensure the battery operates within the state-of-charge limits
+    run_SOC_controller(target_power);
+
+    // Ensure the battery isn't switching rapidly between charging and dischaging
+    run_switch_controller(target_power);
+
+    if (target_power == 0){
+        return;
+    }
+
+    // Calculate current, and ensure the battery falls within the current limits
+    double I = get_target_current(target_power);
+
+    // Setup battery iteration
+    bool iterate = true;
+    size_t count = 0;
+//    size_t lifetimeIndex = util::lifetimeIndex(s.year, s.hour, s.step, static_cast<size_t>(1 / params.capacity->time->dt_hour));
+
+    do {
+
+        // Run Battery Model to update current based on charge/discharge
+        battery_model->run(s, I);
+
+        // Update how much power was actually used to/from battery
+        double battery_voltage_new = battery_model->battery_voltage();
+        target_power = I * battery_voltage_new * util::watt_to_kilowatt;
+
+        // Update power flow calculations, calculate AC power, and check the constraints
+        calculate_powerflow();
+//        iterate = apply_constraints(count, battery_model->get_state());
+
+        // If current changed during last iteration of constraints checker, recalculate internal battery state
+        if (!iterate) {
+//            finalize(lifetimeIndex, I);
+        }
+
+        // Recalculate the DC battery power
+        target_power = I * battery_model->battery_voltage() * util::watt_to_kilowatt;
+        count++;
+
+    } while (iterate);
+
+    // finalize AC power flow calculation and update for next step
+    calculate_powerflow();
+//    _prev_charging = _charging;
 }
 
 bool battery_powerflow::apply_constraints(size_t& count, battery_state& batt_state)
@@ -232,25 +286,24 @@ void battery_powerflow::reset()
     state.reset();
 }
 
-double battery_powerflow::run_current_controller(const double battery_voltage)
+double battery_powerflow::get_target_current(const double target_power_kw)
 {
-    double P, I = 0.; // [W],[V]
-    P = util::kilowatt_to_watt * state.powerBatteryDC;
-    I = P / battery_voltage;
+    double I = 0.; // [W],[V]
+    I = util::kilowatt_to_watt * target_power_kw / battery_model->battery_voltage_nominal();
     apply_current_restrictions(I);
     return I;
 }
 
-void battery_powerflow::run_switch_controller(battery_state& batt_state)
+void battery_powerflow::run_switch_controller(double &target_power)
 {
     int dt_hour = (int)(round(params.capacity->time->dt_hour * util::hour_to_min));
+    const capacity_state cap_state = battery_model->get_state().capacity;
     // Implement rapid switching check
-    if (batt_state.capacity.charge_mode != batt_state.capacity.prev_charge_mode)
+    if (cap_state.charge_mode != cap_state.prev_charge_mode)
     {
         if (state.time_at_charging_mode <= params.charging.minimum_modetime)
         {
-            state.powerBatteryDC = 0.;
-            batt_state.capacity.charge_mode = batt_state.capacity.prev_charge_mode;
+            target_power = 0.;
             state.time_at_charging_mode += dt_hour;
         }
         else
@@ -259,35 +312,44 @@ void battery_powerflow::run_switch_controller(battery_state& batt_state)
     state.time_at_charging_mode += dt_hour;
 }
 
-void battery_powerflow::run_SOC_controller(battery_state& batt_state)
+void battery_powerflow::run_SOC_controller(double &target_power)
 {
-    batt_state.capacity.charge_mode = batt_state.capacity.prev_charge_mode;
-
+    const capacity_state cap_state = battery_model->get_state().capacity;
+    bool cut_off = false;
     // Implement minimum SOC cut-off
     if (state.powerBatteryDC > 0)
     {
-        if (batt_state.capacity.SOC <= params.capacity->minimum_SOC + tolerance) {
-            state.powerBatteryDC = 0;
-        }
-        else {
-            batt_state.capacity.charge_mode = capacity_state::DISCHARGE;
+        if (cap_state.SOC <= params.capacity->minimum_SOC + tolerance) {
+            target_power = 0;
         }
     }
         // Maximum SOC cut-off
     else if (state.powerBatteryDC < 0)
     {
-        if (batt_state.capacity.SOC >= params.capacity->maximum_SOC - tolerance) {
-            state.powerBatteryDC = 0;
-        }
-        else {
-            batt_state.capacity.charge_mode = capacity_state::CHARGE;
+        if (cap_state.SOC >= params.capacity->maximum_SOC - tolerance) {
+            target_power = 0;
         }
     }
 }
 
 
 bool battery_powerflow::apply_current_restrictions(double& I){
-
+    bool iterate = false;
+    if (params.charging.current_choice == dispatch_params::CURRENT_CHOICE::RESTRICT_CURRENT
+        || params.charging.current_choice == dispatch_params::CURRENT_CHOICE::RESTRICT_BOTH) {
+        if (I < 0) {
+            if (fabs(I) > params.charging.current_charge_max) {
+                I = -params.charging.current_charge_max;
+                iterate = true;
+            }
+        } else {
+            if (I > params.charging.current_discharge_max) {
+                I = params.charging.current_discharge_max;
+                iterate = true;
+            }
+        }
+    }
+    return iterate;
 }
 
 bool battery_powerflow::apply_power_restrictions(double& I, double& V){
