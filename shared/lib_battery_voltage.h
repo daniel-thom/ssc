@@ -32,6 +32,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "lib_util.h"
 #include "lib_storage_params.h"
+#include "lib_battery.h"
 
 /*
 Voltage Base class.
@@ -60,23 +61,23 @@ public:
 };
 
 // A row in the table
-class table_point
-{
-public:
-    table_point(double DOD = 0., double V = 0.) :
-            _DOD(DOD), _V(V){}
-    double DOD() const{ return _DOD; }
-    double V() const{ return _V; }
-
-private:
-    double _DOD;
-    double _V;
-};
-
-struct byDOD
-{
-    bool operator()(table_point const &a, table_point const &b){ return a.DOD() < b.DOD(); }
-};
+//class table_point
+//{
+//public:
+//    table_point(double DOD = 0., double V = 0.) :
+//            _DOD(DOD), _V(V){}
+//    double DOD() const{ return _DOD; }
+//    double V() const{ return _V; }
+//
+//private:
+//    double _DOD;
+//    double _V;
+//};
+//
+//struct byDOD
+//{
+//    bool operator()(table_point const &a, table_point const &b){ return a.DOD() < b.DOD(); }
+//};
 
 
 class voltage_table : public battery_voltage_interface

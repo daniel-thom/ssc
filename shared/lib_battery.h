@@ -23,16 +23,18 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef battery_h
 #define battery_h
 
+#include "lib_util.h"
+
 #include <vector>
 #include <map>
 #include <string>
 #include <stdio.h>
 #include <algorithm>
 
-#include "lib_util.h"
-#include "lib_battery_model.h"
-
 // Forward declarations to reduce imports
+
+#include "lib_storage_params.h"
+
 
 // Messages
 class message
@@ -130,7 +132,7 @@ public:
 
 	// Public APIs 
 	capacity_kibam_t();
-	capacity_kibam_t(double q20, double t1, double q1, double q10, double SOC_init, double SOC_max, double SOC_min);
+	capacity_kibam_t(double q20, double t1, double q1, double q10, double SOC_init, double SOC_max, double SOC_min, double dt_hr=1.);
 	~capacity_kibam_t(){}
 
 	// deep copy 
@@ -186,7 +188,7 @@ class capacity_lithium_ion_t : public capacity_t
 {
 public:
 	capacity_lithium_ion_t();
-	capacity_lithium_ion_t(double q, double SOC_init, double SOC_max, double SOC_min);
+	capacity_lithium_ion_t(double q, double SOC_init, double SOC_max, double SOC_min, double dt_hr=1.);
 	~capacity_lithium_ion_t(){};
 
 	// deep copy
@@ -215,7 +217,7 @@ class thermal_t;
 class voltage_t
 {
 public:
-	voltage_t(int mode, int num_cells_series, int num_strings, double voltage, const util::matrix_t<double> voltage_table);
+	voltage_t(int mode, int num_cells_series, int num_strings, double voltage, util::matrix_t<double> voltage_table);
 
 	// deep copy
 	virtual voltage_t * clone()=0;
@@ -226,7 +228,7 @@ public:
 
 	virtual ~voltage_t(){};
 
-	virtual void updateVoltage(capacity_t * capacity, thermal_t * thermal, double dt)=0;
+	virtual void updateVoltage(capacity_t * capacity, const double temp_K, double dt)=0;
 	virtual double battery_voltage(); // voltage of one battery
 
 	double battery_voltage_nominal(); // nominal voltage of battery
@@ -246,10 +248,30 @@ protected:
 	util::matrix_t<double> _batt_voltage_matrix;  // voltage vs depth-of-discharge
 };
 
+// A row in the table
+class table_point
+{
+public:
+	table_point(double DOD = 0., double V = 0.) :
+		_DOD(DOD), _V(V){}
+	double DOD() const{ return _DOD; }
+	double V() const{ return _V; }
+
+private:
+	double _DOD;
+	double _V;
+};
+
+struct byDOD
+{
+	bool operator()(table_point const &a, table_point const &b){ return a.DOD() < b.DOD(); }
+};
+
+
 class voltage_table_t : public voltage_t
 {
 public:
-	voltage_table_t(int num_cells_series, int num_strings, double voltage, const util::matrix_t<double> &voltage_table, double R);
+	voltage_table_t(int num_cells_series, int num_strings, double voltage, util::matrix_t<double> &voltage_table, double R);
 
 	// deep copy
 	voltage_table_t * clone();
@@ -257,7 +279,7 @@ public:
 	// copy from voltage to this
 	void copy(voltage_t *);
 
-	void updateVoltage(capacity_t * capacity, thermal_t * thermal, double dt);
+	void updateVoltage(capacity_t * capacity, const double temp_K, double dt);
 
 protected:
 
@@ -274,8 +296,6 @@ class voltage_dynamic_t : public voltage_t
 public:
 	voltage_dynamic_t(int num_cells_series, int num_strings, double voltage, double Vfull, double Vexp, double Vnom, double Qfull, double Qexp, double Qnom, double C_rate, double R);
 
-	voltage_dynamic_t(int num_cells_series, int num_strings, const battery_voltage_params* p);
-
 	// deep copy
 	voltage_dynamic_t * clone();
 
@@ -283,7 +303,7 @@ public:
 	void copy(voltage_t *);
 
 	void parameter_compute();
-	void updateVoltage(capacity_t * capacity, thermal_t * thermal, double dt);
+	void updateVoltage(capacity_t * capacity, const double temp_K, double dt);
 
 protected:
 	double voltage_model_tremblay_hybrid(double capacity, double current, double q0);
@@ -315,7 +335,7 @@ public:
 	// copy from voltage to this
 	void copy(voltage_t *);
 
-	void updateVoltage(capacity_t * capacity, thermal_t * thermal, double dt);
+	void updateVoltage(capacity_t * capacity, const double temp_K, double dt);
 
 protected:
 	
@@ -412,12 +432,8 @@ Lifetime calendar model
 class lifetime_calendar_t 
 {
 public:
-    explicit lifetime_calendar_t();
-
-	lifetime_calendar_t(util::matrix_t<double> calendar_matrix, double dt_hour);
-
-    explicit lifetime_calendar_t(double q0=1.02, double a=2.66e-3, double b=7280, double c=930, double dt_hour=1);
-
+	lifetime_calendar_t(int calendar_choice, util::matrix_t<double> calendar_matrix, double dt_hour, 
+		float q0=1.02, float a=2.66e-3, float b=-7280, float c=930);
 	virtual ~lifetime_calendar_t(){/* Nothing to do */};
 
 	// deep copy
@@ -427,7 +443,7 @@ public:
 	void copy(lifetime_calendar_t *);
 
 	/// Given the index of the simulation, the tempertature and SOC, return the effective capacity percent
-	double runLifetimeCalendarModel(size_t idx, double T, double SOC);
+	double runLifetimeCalendarModel(size_t idx, double T, double SOC_percent);
 
 	/// Reset or augment the capacity
 	void replaceBattery(double replacement_percent);
@@ -462,10 +478,10 @@ private:
 	double _dq_new;
 
 	// K. Smith: Life Prediction model coeffiecients
-    double _q0; // unitless
-    double _a;  // 1/sqrt(day)
-    double _b;  // K
-    double _c;  // K
+	float _q0; // unitless
+	float _a;  // 1/sqrt(day)
+	float _b;  // K
+	float _c;  // K
 };
 
 /*
@@ -561,9 +577,8 @@ public:
 		double Cp, double h, 
 		std::vector<double> T_room,
 		const util::matrix_t<double> &cap_vs_temp);
-    thermal_t(double dt_hour, const battery_thermal_params& p);
 
-        // deep copy
+	// deep copy
 	thermal_t * clone();
 
 	// copy thermal to this
@@ -584,7 +599,6 @@ protected:
 	double implicit_euler(double I, double dt, size_t lifetimeIndex);
 
 protected:
-    void init();
 
 	util::matrix_t<double> _cap_vs_temp;
 
@@ -602,6 +616,7 @@ protected:
 	double _capacity_percent; //[%]
 	double _T_max;		 // [K]
 	message _message;
+
 };
 /**
 * \class losses_t
@@ -630,17 +645,15 @@ public:
 	* \param[in] batt_loss_idle_kw vector (size 1 for annual or 12 for monthly) containing battery system losses when idle (kW)
 	* \param[in] batt_loss_kw vector (size 1 for annual or 12 for monthly) containing battery system losses when idle (kW)
 	*/
-    losses_t(double dtHour, lifetime_t * lifetime, thermal_t * thermal, capacity_t* capacity, const battery_losses_params* p);
-
-    losses_t(double dtHour,
-        lifetime_t *,
-        thermal_t *,
-        capacity_t*,
-        int loss_mode,
-        const double_vec& batt_loss_charge_kw = std::vector<double>(0),
-        const double_vec& batt_loss_discharge_kw = std::vector<double>(0),
-        const double_vec& batt_loss_idle_kw = std::vector<double>(0),
-        const double_vec& batt_loss_kw=std::vector<double>(0));
+	losses_t(double dtHour,
+			lifetime_t *, 
+			thermal_t *, 
+			capacity_t*, 
+			const int loss_mode, 
+			const double_vec batt_loss_charge_kw = std::vector<double>(0), 
+			const double_vec batt_loss_discharge_kw = std::vector<double>(0), 
+			const double_vec batt_loss_idle_kw = std::vector<double>(0), 
+			const double_vec batt_loss_kw=std::vector<double>(0));
 
 	/// Deep copy of losses object
 	losses_t * clone();
@@ -673,8 +686,6 @@ protected:
 	double_vec  _discharge_loss;
 	double_vec  _idle_loss;
 	double_vec  _full_loss;
-
-    void init_loss_vecs(const double_vec& charge_loss, const double_vec& discharge_loss, const double_vec& idle_loss, const double_vec& losses);
 };
 
 /*
@@ -685,8 +696,7 @@ class battery_t
 {
 public:
 	battery_t();
-
-	battery_t(double dt, int batt_chem);
+	battery_t(double dt, int battery_chemistry);
 
 	// deep copy constructor (new memory), from battery to this
 	battery_t(const battery_t& battery);
@@ -694,7 +704,8 @@ public:
 	// copy members from battery to this
 	void copy(const battery_t * battery);
 
-	~battery_t();
+	// virtual destructor, does nothing as no memory allocated in constructor
+	virtual ~battery_t();
 
 	// delete the new submodels that have been allocated
 	void delete_clone();
