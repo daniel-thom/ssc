@@ -45,20 +45,21 @@ public:
     virtual void updateCapacityForThermal(double capacity_percent) = 0;
     virtual void updateCapacityForLifetime(double capacity_percent) = 0;
 
-    virtual void replace_battery() = 0;
+    virtual void replace_battery(double replacement_percent) = 0;
 
     virtual double get_q1() = 0; // available charge
     virtual double get_q10() = 0; // capacity at 10 hour discharge rate
+    virtual double get_SOC() = 0;
 
     virtual capacity_state get_state() = 0;
     virtual void set_state(const capacity_state &state) = 0;
 
-    virtual battery_capacity_params get_params() const = 0;
+    virtual std::shared_ptr<const battery_capacity_params> get_params() const = 0;
 
 protected:
     static void compute_charge_modes(capacity_state &state);
 
-    static void apply_SOC_limits(capacity_state &state, const battery_capacity_params &params);
+    static void apply_SOC_limits(capacity_state &state, const std::shared_ptr<const battery_capacity_params> params);
 
     static void update_SOC(capacity_state &state);
 
@@ -75,7 +76,7 @@ class capacity_kibam : public battery_capacity_interface
 public:
 
     // Public APIs
-    capacity_kibam(const battery_capacity_params& p);
+    capacity_kibam(const std::shared_ptr<const battery_capacity_params> p);
     ~capacity_kibam(){}
 
     // copy from capacity to this
@@ -85,21 +86,23 @@ public:
     void updateCapacityForThermal(double capacity_percent);
     void updateCapacityForLifetime(double capacity_percent);
 
-    void replace_battery() override;
+    void replace_battery(double replacement_percent) override;
 
     double get_q1() override; // Available charge
     double get_q2(); // Bound charge
     double get_q10() override; // Capacity at 10 hour discharge rate
+    double get_SOC() override {return state.SOC;}
+
 
     capacity_state get_state() override { return state; }
     void set_state(const capacity_state& new_state) override { state = new_state; }
 
-    battery_capacity_params get_params() const override {return params;};
+    std::shared_ptr<const battery_capacity_params> get_params() const override {return params;};
 
 protected:
     capacity_state state;
 
-    const battery_capacity_params params;
+    std::shared_ptr<const battery_capacity_params> params;
 
     // parameters for finding c, k, qmax
     double t1;  // [h] - discharge rate for capacity at _q1
@@ -129,7 +132,7 @@ Lithium Ion specific capacity model
 class capacity_lithium_ion : public battery_capacity_interface
 {
 public:
-    capacity_lithium_ion(const battery_capacity_params& p);
+    capacity_lithium_ion(const std::shared_ptr<const battery_capacity_params> p);
     ~capacity_lithium_ion(){};
 
     // copy from capacity to this
@@ -140,20 +143,22 @@ public:
     void updateCapacityForThermal(double capacity_percent) override;
     void updateCapacityForLifetime(double capacity_percent) override;
 
-    void replace_battery() override;
+    void replace_battery(double replacement_percent) override;
 
     double get_q1() override;  // Available charge
     double get_q10() override; // Capacity at 10 hour discharge rate
+    double get_SOC() override {return state.SOC;}
+
 
     capacity_state get_state() override { return state; }
     void set_state(const capacity_state& new_state) override { state = new_state; }
 
-    battery_capacity_params get_params() const override {return params;};
+    std::shared_ptr<const battery_capacity_params> get_params() const override {return params;};
 
 protected:
     capacity_state state;
 
-    battery_capacity_params params;
+    std::shared_ptr<const battery_capacity_params> params;
 
 };
 

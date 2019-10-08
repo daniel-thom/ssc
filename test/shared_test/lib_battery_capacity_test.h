@@ -3,25 +3,8 @@
 
 #include <gtest/gtest.h>
 
-//#include "lib_battery_capacity.h"
+#include "lib_battery_capacity.h"
 #include "lib_battery.h"
-
-struct capacity_state {
-    enum {
-        CHARGE, NO_CHARGE, DISCHARGE
-    };
-
-    double q0;  // [Ah] - Total capacity at timestep
-    double qmax; // [Ah] - maximum possible capacity
-    double qmax_thermal; // [Ah] - maximum capacity adjusted for temperature affects
-    double I;   // [A]  - Current draw
-    double I_loss; // [A] - Lifetime and thermal losses
-    double SOC; // [%] - State of Charge
-    double DOD; // [%] - Depth of Discharge
-    double DOD_prev; // [%] - Depth of Discharge of previous step
-    int charge_mode; // {CHARGE, NO_CHARGE, DISCHARGE}
-    int prev_charge_mode; // {CHARGE, NO_CHARGE, DISCHARGE}
-};
 
 static void compareState(capacity_t* old_cap, const capacity_state& state, const std::string& msg){
     double tol = 0.01;
@@ -40,14 +23,27 @@ static void compareState(std::unique_ptr<capacity_t>& old_cap, const capacity_st
     compareState(old_cap.get(), state, msg);
 }
 
+static void compareState(std::unique_ptr<battery_capacity_interface>& cap, const capacity_state &s, const std::string& msg) {
+    double tol = 0.01;
+    auto state = cap->get_state();
+    EXPECT_NEAR(s.q0, state.q0, tol) << msg;
+    EXPECT_NEAR(s.qmax_thermal, state.qmax_thermal, tol) << msg;
+    EXPECT_NEAR(s.qmax, state.qmax, tol) << msg;
+    EXPECT_NEAR(s.I, state.I, tol) << msg;
+    EXPECT_NEAR(s.I_loss, state.I_loss, tol) << msg;
+    EXPECT_NEAR(s.SOC, state.SOC, tol) << msg;
+    EXPECT_NEAR(s.DOD, state.DOD, tol) << msg;
+    EXPECT_NEAR(s.charge_mode, state.charge_mode, tol) << msg;
+}
+
 class lib_battery_capacity_test : public ::testing::Test
 {
 protected:
-//    std::unique_ptr<battery_capacity_interface> new_cap;
-    std::unique_ptr<capacity_t> old_cap;
-//    std::shared_ptr<storage_time_params> time;
+    std::unique_ptr<battery_capacity_interface> model;
+//    std::unique_ptr<capacity_t> old_cap;
+    std::shared_ptr<storage_time_params> time;
 
-//    battery_capacity_params params;
+    std::shared_ptr<const battery_capacity_params> params;
     double tol = 0.1;
     double error;
 
@@ -59,19 +55,11 @@ protected:
     double dt_hour = 1;
     int nyears = 1;
 
-public:
+    void SetUp() override {
+        time = std::make_shared<storage_time_params>(dt_hour, nyears);
+        params = std::shared_ptr<const battery_capacity_params>(new battery_capacity_params({time, q, SOC_init, SOC_min, SOC_max}));
+    }
 
-//    void compareStates(capacity_state &s, std::string msg) {
-//        auto state = new_cap->get_state();
-//        EXPECT_NEAR(s.q0, state.q0, tol) << msg;
-//        EXPECT_NEAR(s.qmax_thermal, state.qmax_thermal, tol) << msg;
-//        EXPECT_NEAR(s.qmax, state.qmax, tol) << msg;
-//        EXPECT_NEAR(s.I, state.I, tol) << msg;
-//        EXPECT_NEAR(s.I_loss, state.I_loss, tol) << msg;
-//        EXPECT_NEAR(s.SOC, state.SOC, tol) << msg;
-//        EXPECT_NEAR(s.DOD, state.DOD, tol) << msg;
-//        EXPECT_NEAR(s.charge_mode, state.charge_mode, tol) << msg;
-//    }
 };
 
 /**
@@ -84,7 +72,8 @@ class LiIon_lib_battery_capacity_test : public lib_battery_capacity_test
 public:
 
     void SetUp()override {
-        old_cap = std::unique_ptr<capacity_lithium_ion_t>(new capacity_lithium_ion_t(q, SOC_init, SOC_max, SOC_min));
+        lib_battery_capacity_test::SetUp();
+        model = std::unique_ptr<capacity_lithium_ion>(new capacity_lithium_ion(params));
     }
 };
 
@@ -96,15 +85,17 @@ public:
 class KiBam_lib_battery_capacity_test : public lib_battery_capacity_test
 {
 protected:
-    double q10 = 93.;
+    double q20 = 100;
     double t1 = 1;
     double q1 = 60.;
-    double q20 = 100;
+    double q10 = 93.;
 public:
 
     void SetUp() override {
-        old_cap = std::unique_ptr<capacity_kibam_t>(new capacity_kibam_t(q20, t1, q1, q10,SOC_init,
-                SOC_max, SOC_min, dt_hour));
+        lib_battery_capacity_test::SetUp();
+        auto p = const_cast<battery_capacity_params*>(params.get());
+        p->lead_acid = {q20, t1, q1, q10};
+        model = std::unique_ptr<capacity_kibam>(new capacity_kibam(params));
     }
 };
 #endif //SAM_SIMULATION_CORE_LIB_BATTERY_CAPACITY_TEST_H

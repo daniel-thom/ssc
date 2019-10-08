@@ -92,7 +92,7 @@ void battery_powerflow::calculate_powerflow()
     }
 }
 
-void battery_powerflow::apply_dispatch(const storage_state& s, double &target_power) {
+void battery_powerflow::apply_dispatch(const storage_time_state& s, double &target_power) {
     // Ensure the battery operates within the state-of-charge limits
     run_SOC_controller(target_power);
 

@@ -89,7 +89,7 @@ public:
     /// Calculate the power flow for the battery system
     void calculate_powerflow();
 
-    void apply_dispatch(const storage_state& s, double& target_power);
+    void apply_dispatch(const storage_time_state& s, double& target_power);
 
     void run_switch_controller(double &target_power);
 

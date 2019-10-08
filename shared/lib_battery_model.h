@@ -29,7 +29,7 @@ public:
 
     static constexpr const double T_max = 400;
 
-    void updateTemperature(double I, const storage_state &time);
+    void updateTemperature(double I, const storage_time_state &time);
     void replace_battery(size_t lifetimeIndex);
 
     // outputs
@@ -76,7 +76,7 @@ public:
     battery_losses(const battery_losses&);
 
     /// Run the losses model at the present simulation index (for year 1 only)
-    void run_losses(const storage_state &time, const capacity_state &cap);
+    void run_losses(const storage_time_state &time, const capacity_state &cap);
 
     battery_losses_params get_params() const {return params;}
 
@@ -117,7 +117,7 @@ public:
     ~battery();
 
     // Run all for single time step
-    void run(const storage_state& time, double& I);
+    void run(const storage_time_state& time, double& I);
 
     // Compute how battery system to modification of a single state variable
     void change_power(const double P);
@@ -159,9 +159,9 @@ private:
     // Run a component level model
     void run_capacity_model(double &I);
     void run_voltage_model();
-    void run_thermal_model(double I, const storage_state &time);
-    void run_lifetime_model(const storage_state &time);
-    void run_losses_model(const storage_state &time);
+    void run_thermal_model(double I, const storage_time_state &time);
+    void run_lifetime_model(const storage_time_state &time);
+    void run_losses_model(const storage_time_state &time);
 
 
 

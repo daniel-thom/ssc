@@ -30,10 +30,10 @@ void battery_thermal::replace_battery(size_t lifetimeIndex)
 }
 
 #define HR2SEC 3600.0
-void battery_thermal::updateTemperature(double I, const storage_state &time)
+void battery_thermal::updateTemperature(double I, const storage_time_state &time)
 {
     double dt = params.time->dt_hour * HR2SEC;
-    size_t idx = time.lifetime_index;
+    size_t idx = time.get_lifetime_index();
     if (trapezoidal(I, dt, idx) < T_max && trapezoidal(I, dt, idx) > 0)
         state.T_battery = trapezoidal(I, dt, idx);
     else if (rk4(I, dt, idx) < T_max && rk4(I, dt, idx) > 0)
@@ -102,9 +102,9 @@ loss_ts(losses.loss_ts){
 
 double battery_losses::getLoss(size_t indexFirstYear) { return loss_ts[indexFirstYear]; }
 
-void battery_losses::run_losses(const storage_state &time, const capacity_state &cap)
+void battery_losses::run_losses(const storage_time_state &time, const capacity_state &cap)
 {
-    size_t indexYearOne = util::yearOneIndex(params.time->dt_hour, time.lifetime_index);
+    size_t indexYearOne = util::yearOneIndex(params.time->dt_hour, time.get_lifetime_index());
     auto hourOfYear = (size_t)std::floor(indexYearOne * params.time->dt_hour);
     size_t monthIndex = util::month_of((double)(hourOfYear)) - 1;
 
@@ -190,7 +190,7 @@ battery_state battery::get_state(){
     return s;
 }
 
-void battery::run(const storage_state& time, double& I)
+void battery::run(const storage_time_state& time, double& I)
 {
     // Temperature affects capacity, but capacity model can reduce current, which reduces temperature, need to iterate
     double I_initial = I;
@@ -228,7 +228,7 @@ void battery::change_power(const double P){
     }
 }
 
-void battery::run_thermal_model(double I, const storage_state &time)
+void battery::run_thermal_model(double I, const storage_time_state &time)
 {
     thermal->updateTemperature(I, time);
 }
@@ -248,21 +248,16 @@ void battery::run_voltage_model()
     voltage->updateVoltage(capacity->get_state(), thermal->get_state().T_battery);
 }
 
-void battery::run_lifetime_model(const storage_state &time)
+void battery::run_lifetime_model(const storage_time_state &time)
 {
     lifetime->runLifetimeModels(time, state.capacity, thermal_model()->get_T_battery());
-    if (lifetime->checkReplacement(time))
-    {
-        capacity->replace_battery();
-        thermal->replace_battery(time.lifetime_index);
-    }
 }
-void battery::run_losses_model(const storage_state &time)
+void battery::run_losses_model(const storage_time_state &time)
 {
-    if (time.index > state.last_idx || time.index == 0)
+    if (time.get_index() > state.last_idx || time.get_index() == 0)
     {
         losses->run_losses(time, capacity->get_state());
-        state.last_idx = time.index;
+        state.last_idx = time.get_index();
     }
 }
 battery_capacity_interface * battery::capacity_model() const { return capacity; }
@@ -292,7 +287,7 @@ double battery::get_battery_energy_nominal()
 double battery::get_battery_power_to_fill(double SOC_max)
 {
     // in one time step
-    return (this->get_battery_energy_to_fill(SOC_max) / params.capacity_vars.time->dt_hour);
+    return (this->get_battery_energy_to_fill(SOC_max) / params.capacity_vars->time->dt_hour);
 }
 
 double battery::battery_charge_maximum(){ return capacity->get_state().qmax; }

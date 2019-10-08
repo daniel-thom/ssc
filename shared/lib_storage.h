@@ -53,7 +53,7 @@ protected:
 
     /*! Dynamic storage properties */
     storage_forecast forecast;
-    storage_state state;
+    storage_time_state state;
 
     /*! Accumulated storage outputs */
     storage_accumulated_outputs accumulated_outputs;

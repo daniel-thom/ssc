@@ -2,6 +2,7 @@
 #define SYSTEM_ADVISOR_MODEL_LIB_BATTERY_LIFETIME_H
 
 #include "lib_storage_params.h"
+#include "lib_battery_capacity.h"
 
 struct cycle_lifetime_state {
     double relative_q;
@@ -10,8 +11,8 @@ struct cycle_lifetime_state {
     double Range;
     double average_range;
     size_t nCycles;
-    std::vector<double> Peaks;
     double jlt;
+    std::vector<double> Peaks;
 
     void init(double rel_q);
 };
@@ -24,14 +25,12 @@ class lifetime_cycle
 {
 
 public:
-    explicit lifetime_cycle(const battery_lifetime_params*);
-
-    virtual ~lifetime_cycle();
+    explicit lifetime_cycle(const std::shared_ptr<const battery_lifetime_params> &params);
 
     lifetime_cycle(const lifetime_cycle &);
 
     /// return q, the effective capacity percent
-    double runCycleLifetime(double DOD);
+    void runCycleLifetime(double DOD);
 
     /// return hypothetical dq the average cycle
     double estimateCycleDamage();
@@ -72,9 +71,9 @@ private:
 };
 
 struct calendar_lifetime_state {
-    size_t last_idx;
     size_t day_age_of_battery;
     double q;
+    size_t last_idx;
 
     // Li Ion model, relative capacity (0 - 1)
     double dq_old;
@@ -91,7 +90,7 @@ class lifetime_calendar
 public:
     explicit lifetime_calendar();
 
-    lifetime_calendar(const battery_lifetime_params*);
+    lifetime_calendar(const std::shared_ptr<const battery_lifetime_params> &params);
 
     explicit lifetime_calendar(double q0=1.02, double a=2.66e-3, double b=7280, double c=930, double dt_hour=1);
 
@@ -100,7 +99,7 @@ public:
     virtual ~lifetime_calendar(){/* Nothing to do */};
 
     /// Given the index of the simulation, the tempertature and SOC, return the effective capacity percent
-    double runLifetimeCalendarModel(size_t idx, double T, double SOC);
+    void runLifetimeCalendarModel(size_t idx, double T, double SOC);
 
     /// Reset or augment the capacity
     void replaceBattery(double replacement_percent);
@@ -112,7 +111,7 @@ public:
 
 protected:
 
-    void runLithiumIonModel(double T, double SOC);
+    void runLithiumIonModel(double T, double SOC_ratio);
     void runTableModel();
 
 private:
@@ -132,7 +131,6 @@ struct lifetime_state{
     calendar_lifetime_state calendar;
 
     double q;               // battery relative capacity (0 - 100%)
-    int replacements;       // Number of replacements this year
 
 };
 
@@ -143,17 +141,17 @@ class battery_lifetime
 {
 public:
 
-    battery_lifetime(const battery_lifetime_params& params);
+    battery_lifetime(const std::shared_ptr<const battery_lifetime_params> &p);
 
     battery_lifetime(const battery_lifetime &);
 
     virtual ~battery_lifetime(){};
 
     /// Execute the lifetime models given the current lifetime run index, capacity model, and temperature
-    void runLifetimeModels(const storage_state& time, const capacity_state& cap, double T_battery);
+    void runLifetimeModels(const storage_time_state& time, const capacity_state& cap, double T_battery);
 
     /// Check if the battery should be replaced based upon the replacement criteria
-    bool checkReplacement(const storage_state& time);
+    void replaceBattery(double replacement_percent);
 
     /// Reset the number of replacements at the year end
     void reset_replacements();
@@ -170,21 +168,15 @@ public:
     /// Return the number of total replacements in the year
     int get_replacements();
 
-    /// Return the replacement percent
-    double get_replacement_percent();
-
-    /// Set the replacement option
-    void set_replacement_option(int option);
-
     void set_state(const lifetime_state& s) {state = s;}
 
     lifetime_state get_state() const {return state;}
 
-    battery_lifetime_params get_params() const {return params;}
+    std::shared_ptr<const battery_lifetime_params> get_params() const {return params;}
 
 protected:
 
-    const battery_lifetime_params params;
+    const std::shared_ptr<const battery_lifetime_params> params;
 
     lifetime_state state;
 
@@ -193,6 +185,11 @@ protected:
 
     /// Underlying lifetime calendar model
     std::unique_ptr<lifetime_calendar> calendar_model;
+
+    void update_state(){
+        state.calendar = calendar_model->get_state();
+        state.cycle = cycle_model->get_state();
+    }
 };
 
 

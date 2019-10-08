@@ -13,13 +13,13 @@ void cycle_lifetime_state::init(double rel_q){
     average_range = 0;
 }
 
-lifetime_cycle::lifetime_cycle(const battery_lifetime_params* params):
+lifetime_cycle::lifetime_cycle(const std::shared_ptr<const battery_lifetime_params> &params):
 params_p(params){
-    for (int i = 0; i <(int)params_p->lifetime_matrix.nrows(); i++)
+    for (int i = 0; i <(int)params_p->cycle_matrix.nrows(); i++)
     {
-        _DOD_vect.push_back(params_p->lifetime_matrix.at(i,0));
-        _cycles_vect.push_back(params_p->lifetime_matrix.at(i,1));
-        _capacities_vect.push_back(params_p->lifetime_matrix.at(i, 2));
+        _DOD_vect.push_back(params_p->cycle_matrix.at(i,0));
+        _cycles_vect.push_back(params_p->cycle_matrix.at(i,1));
+        _capacities_vect.push_back(params_p->cycle_matrix.at(i, 2));
     }
     // initialize other member variables
     state.Range = 0;
@@ -46,12 +46,9 @@ double lifetime_cycle::estimateCycleDamage()
     }
     return(bilinear(DOD, state.nCycles + 1) - bilinear(DOD, state.nCycles + 2));
 }
-double lifetime_cycle::runCycleLifetime(double DOD)
+void lifetime_cycle::runCycleLifetime(double DOD)
 {
     rainflow(DOD);
-
-    // return the effective capacity (Q_neg)
-    return state.relative_q;
 }
 
 void lifetime_cycle::rainflow(double DOD)
@@ -298,7 +295,7 @@ double lifetime_cycle::bilinear(double DOD, int cycle_number)
         // just have one row, single level interpolation
     else
     {
-        C = util::linterp_col(params_p->lifetime_matrix, 1, cycle_number, 2);
+        C = util::linterp_col(params_p->cycle_matrix, 1, cycle_number, 2);
     }
 
     return C;
@@ -319,16 +316,19 @@ Lifetime Calendar Model
 */
 lifetime_calendar::lifetime_calendar(){};
 
-lifetime_calendar::lifetime_calendar(const battery_lifetime_params* params):
+lifetime_calendar::lifetime_calendar(const std::shared_ptr<const battery_lifetime_params> &params):
 params_p(params) {
-    state.init(-1);
+    if (params_p->calendar_choice == battery_lifetime_params::MODEL)
+        state.init(params_p->calendar_q0);
+    else
+        state.init(1);
 
     dt_day = params_p->time->dt_hour / util::hours_per_day;
-    if (params_p->calendar_choice == storage_params::CALENDAR_OPTIONS::CALENDAR_LOSS_TABLE) {
+    if (params_p->calendar_choice == battery_lifetime_params::TABLE) {
         // extract and sort calendar life info from table
-        for (size_t i = 0; i != params_p->calendar_lifetime_matrix.nrows(); i++) {
-            table_days.emplace_back((int) params_p->calendar_lifetime_matrix.at(i, 0));
-            table_capacity.emplace_back(params_p->calendar_lifetime_matrix.at(i, 1));
+        for (size_t i = 0; i != params_p->calendar_matrix.nrows(); i++) {
+            table_days.emplace_back((int) params_p->calendar_matrix.at(i, 0));
+            table_capacity.emplace_back(params_p->calendar_matrix.at(i, 1));
         }
     }
 }
@@ -344,9 +344,9 @@ params_p(lifetime_calendar.params_p)
 
 double lifetime_calendar::get_calendar_choice() { return params_p->calendar_choice; }
 
-double lifetime_calendar::runLifetimeCalendarModel(size_t idx, double T, double SOC)
+void lifetime_calendar::runLifetimeCalendarModel(size_t idx, double T, double SOC)
 {
-    if (params_p->calendar_choice != storage_params::CALENDAR_OPTIONS::NA)
+    if (params_p->calendar_choice != battery_lifetime_params::NONE)
     {
         // only run once per iteration (need to make the last iteration)
         if (idx > state.last_idx)
@@ -355,19 +355,18 @@ double lifetime_calendar::runLifetimeCalendarModel(size_t idx, double T, double 
             if (idx % util::hours_per_day / params_p->time->dt_hour == 0)
                 state.day_age_of_battery++;
 
-            if (params_p->calendar_choice == storage_params::CALENDAR_OPTIONS::LITHIUM_ION_CALENDAR_MODEL)
-                runLithiumIonModel(T, SOC);
-            else if (params_p->calendar_choice == storage_params::CALENDAR_OPTIONS::CALENDAR_LOSS_TABLE)
+            if (params_p->calendar_choice == battery_lifetime_params::MODEL)
+                runLithiumIonModel(T, SOC/100.);
+            else if (params_p->calendar_choice == battery_lifetime_params::TABLE)
                 runTableModel();
 
             state.last_idx = idx;
         }
     }
-    return state.q;
 }
-void lifetime_calendar::runLithiumIonModel(double T, double SOC)
+void lifetime_calendar::runLithiumIonModel(double T, double SOC_ratio)
 {
-    double k_cal = params_p->calendar_a * exp(params_p->calendar_b * (1. / T - 1. / 296)) * exp(params_p->calendar_c * (SOC / T - 1. / 296));
+    double k_cal = params_p->calendar_a * exp(params_p->calendar_b * (1. / T - 1. / 296)) * exp(params_p->calendar_c * (SOC_ratio / T - 1. / 296));
     if (state.dq_old == 0)
         state.dq_new = k_cal * sqrt(dt_day);
     else
@@ -416,7 +415,8 @@ void lifetime_calendar::replaceBattery(double replacement_percent)
 {
     state.day_age_of_battery = 0;
     state.q += replacement_percent;
-    state.q = fmin(params_p->calendar_q0 * 100, state.q);
+    if (params_p->calendar_choice == battery_lifetime_params::MODEL)
+        state.q = fmin(params_p->calendar_q0 * 100, state.q);
     state.dq_new = 0;
     state.dq_old = 0;
 }
@@ -425,20 +425,19 @@ void lifetime_calendar::replaceBattery(double replacement_percent)
 Define Lifetime Model
 */
 
-battery_lifetime::battery_lifetime(const battery_lifetime_params& p):
-        params(p),
-        cycle_model(new lifetime_cycle(&p)),
-        calendar_model(new lifetime_calendar(&p))
+battery_lifetime::battery_lifetime(const std::shared_ptr<const battery_lifetime_params> &p):
+        cycle_model(new lifetime_cycle(p)),
+        calendar_model(new lifetime_calendar(p)),
+        params(p)
 {
-    state.replacements = 0;
     state.q = 100;
 }
 
 
 battery_lifetime::battery_lifetime(const battery_lifetime& lifetime):
         params(lifetime.params),
-        cycle_model(new lifetime_cycle(&lifetime.params)),
-        calendar_model(new lifetime_calendar(&lifetime.params))
+        cycle_model(new lifetime_cycle(lifetime.params)),
+        calendar_model(new lifetime_calendar(lifetime.params))
 {
     set_state(lifetime.get_state());
     state = lifetime.state;
@@ -448,23 +447,20 @@ double battery_lifetime::get_capacity_percent(){ return state.q; }
 double battery_lifetime::get_capacity_percent_cycle() { return cycle_model->get_state().relative_q; }
 double battery_lifetime::get_capacity_percent_calendar() { return calendar_model->get_calendar_choice(); }
 
-void battery_lifetime::runLifetimeModels(const storage_state& time, const capacity_state& cap, double T_battery)
+void battery_lifetime::runLifetimeModels(const storage_time_state& time, const capacity_state& cap, double T_battery)
 {
     double q_last = state.q;
-    double q_cycle = state.q;
-    double q_calendar = state.q;
 
     if (state.q > 0)
     {
         if (cap.charge_mode != cap.prev_charge_mode)
-            q_cycle = cycle_model->runCycleLifetime(cap.DOD_prev);
-        else if (time.index==0)
-            q_cycle = cycle_model->runCycleLifetime(cap.DOD);
+            cycle_model->runCycleLifetime(cap.DOD);
 
-        q_calendar = calendar_model->runLifetimeCalendarModel(time.index, T_battery, cap.SOC * 0.01);
+        calendar_model->runLifetimeCalendarModel(time.get_index(), T_battery, cap.SOC * 0.01);
 
         // total capacity is min of cycle (Q_neg) and calendar (Q_li) capacity
-        state.q = fmin(q_cycle, q_calendar);
+        update_state();
+        state.q = fmin(state.cycle.relative_q, state.calendar.q);
     }
     if (state.q < 0)
         state.q = 0;
@@ -474,46 +470,45 @@ void battery_lifetime::runLifetimeModels(const storage_state& time, const capaci
         state.q = q_last;
 }
 
-bool battery_lifetime::checkReplacement(const storage_state& time)
+void battery_lifetime::replaceBattery(double replacement_percent)
 {
-    auto& rep = params.replacement;
-    bool replace = false;
-    if (time.year < rep.replacement_per_yr_schedule.size())
-    {
-        auto num_repl = (size_t)rep.replacement_per_yr_schedule[time.year];
-        for (size_t j_repl = 0; j_repl < num_repl; j_repl++)
-        {
-            if ((time.hour == (j_repl * 8760 / num_repl)) && time.step == 0)
-            {
-                replace = true;
-                break;
-            }
-        }
-    }
-    bool replaced = false;
-    if ((rep.replacement_option == 1 && (state.q - tolerance) <= rep.replacement_capacity) || replace)
-    {
-        state.replacements++;
+//    auto& rep = params.replacement;
+//    bool replace = false;
+//    if (time.get_year() < rep.replacement_per_yr_schedule.size())
+//    {
+//        auto num_repl = (size_t)rep.replacement_per_yr_schedule[time.get_year()];
+//        for (size_t j_repl = 0; j_repl < num_repl; j_repl++)
+//        {
+//            if ((time.get_hour() == (j_repl * 8760 / num_repl)) && time.get_step() == 0)
+//            {
+//                replace = true;
+//                break;
+//            }
+//        }
+//    }
+//    bool replaced = false;
+//    if ((rep.replacement_option == 1 && (state.q - tolerance) <= rep.replacement_capacity) || replace)
+//    {
+//        state.replacements++;
+//
+//        double replacement_percent = rep.replacement_percent_per_yr_schedule[time.get_year()];
+//        state.q += replacement_percent;
+//
+//        // for now, only allow augmenting up to original installed capacity
+//        state.q = fmin(100., state.q);
+//
+//        replaced = true;
+//
+//        cycle_model->replaceBattery(replacement_percent);
+//        calendar_model->replaceBattery(replacement_percent);
+//    }
+//    return replaced;
 
-        double replacement_percent = rep.replacement_percent_per_yr_schedule[time.year];
-        state.q += replacement_percent;
-
-        // for now, only allow augmenting up to original installed capacity
-        state.q = fmin(100., state.q);
-
-        replaced = true;
-
-        cycle_model->replaceBattery(replacement_percent);
-        calendar_model->replaceBattery(replacement_percent);
-    }
-    return replaced;
+    cycle_model->replaceBattery(replacement_percent);
+    calendar_model->replaceBattery(replacement_percent);
+    update_state();
 }
 
-void battery_lifetime::reset_replacements(){ state.replacements = 0; }
-int battery_lifetime::get_replacements(){ return state.replacements; }
-void battery_lifetime::set_replacement_option(int option) {
-    auto rep = const_cast<storage_replacement_params*>(&params.replacement);
-    rep->replacement_option = option;
-}
+
 
 

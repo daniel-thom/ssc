@@ -46,28 +46,50 @@ void storage_time_params::initialize_from_data(var_table &vt) {
         nyears = 1;
 }
 
+storage_time_state::storage_time_state(size_t step_hr){
+    year = hour = index = lifetime_index = 0;
+    steps_per_hour = step_hr;
+}
 
-void battery_lifetime_params::initialize_from_data(var_table &vt, storage_time_params &t, bool batt_not_fuelcell){
+void storage_time_state::increment_storage_time(){
+    index++;
+    lifetime_index++;
+    if (index >= 8760)
+        year++;
+    if (index % steps_per_hour == 0)
+        hour++;
+}
+
+void storage_time_state::reset_storage_time(size_t index) {
+}
+
+void battery_lifetime_params::initialize_from_data(var_table &vt, storage_time_params &t){
     time = std::make_shared<storage_time_params>(t);
 
-    lifetime_matrix = vt.as_matrix("batt_lifetime_matrix");
-    if (lifetime_matrix.nrows() < 3 || lifetime_matrix.ncols() != 3)
+    cycle_matrix = vt.as_matrix("batt_lifetime_matrix");
+    if (cycle_matrix.nrows() < 3 || cycle_matrix.ncols() != 3)
         throw general_error("Battery lifetime matrix must have three columns and at least three rows");
 
-    calendar_choice = vt.as_integer("batt_calendar_choice");
-    if (calendar_choice == storage_params::CALENDAR_OPTIONS::CALENDAR_LOSS_TABLE){
-        calendar_lifetime_matrix = vt.as_matrix("batt_calendar_lifetime_matrix");
-        if ((calendar_lifetime_matrix.nrows() < 2 || calendar_lifetime_matrix.ncols() != 2))
-            throw general_error("Battery calendar lifetime matrix must have 2 columns and at least 2 rows");
+    int choice = vt.as_integer("batt_calendar_choice");
+    switch (choice){
+        case 0 : {
+            calendar_choice = battery_lifetime_params::TABLE;
+            calendar_matrix = vt.as_matrix("batt_calendar_lifetime_matrix");
+            if ((calendar_matrix.nrows() < 2 || calendar_matrix.ncols() != 2))
+                throw general_error("Battery calendar lifetime matrix must have 2 columns and at least 2 rows");
+            break;
+        }
+        case 1 : {
+            calendar_choice = battery_lifetime_params::MODEL;
+            calendar_q0 = vt.as_double("batt_calendar_q0");
+            calendar_a = vt.as_double("batt_calendar_a");
+            calendar_b = vt.as_double("batt_calendar_b");
+            calendar_c = vt.as_double("batt_calendar_c");
+            break;
+        }
+        default:
+            throw general_error("batt_calendar_choice not recognized. Must be 0 (None), 1 (Table) or 2 (Model)");
     }
-    if (calendar_choice == storage_params::CALENDAR_OPTIONS::LITHIUM_ION_CALENDAR_MODEL) {
-        calendar_q0 = vt.as_double("batt_calendar_q0");
-        calendar_a = vt.as_double("batt_calendar_a");
-        calendar_b = vt.as_double("batt_calendar_b");
-        calendar_c = vt.as_double("batt_calendar_c");
-    }
-
-    replacement.initialize_from_data(vt, batt_not_fuelcell);
 }
 
 void battery_losses_params::initialize_from_data(var_table &vt, storage_time_params &t){
@@ -123,15 +145,23 @@ void battery_losses_params::initialize_from_data(var_table &vt, storage_time_par
 void battery_voltage_params::initialize_from_data(var_table& vt){
     num_cells_series = vt.as_integer("batt_computed_series");
     num_strings = vt.as_integer("batt_computed_strings");
+    Vnom_default = vt.as_double("batt_Vnom_default");
 
-    voltage_choice = vt.as_integer("batt_voltage_choice");
+    int choice = vt.as_integer("batt_voltage_choice");
+    switch (choice){
+        case 0 : voltage_choice = MODEL;
+            break;
+        case 1 : voltage_choice = TABLE;
+            break;
+        default:
+            throw general_error("batt_voltage_choice not recognized, must be 0 (model) or 1 (table)");
+    }
 
     if (voltage_choice == 0){
-        Vnom_default = vt.as_double("batt_Vnom_default");
         Vfull = vt.as_double("batt_Vfull");
         Vexp = vt.as_double("batt_Vexp");
         Vnom = vt.as_double("batt_Vnom");
-        Qfull_flow = vt.as_double("batt_Qfull_flow");
+//        Qfull_flow = vt.as_double("batt_Qfull_flow");
         Qfull = vt.as_double("batt_Qfull");
         Qexp = vt.as_double("batt_Qexp");
         Qnom = vt.as_double("batt_Qnom");
@@ -188,9 +218,13 @@ void battery_properties_params::initialize_from_data(var_table& vt, storage_time
 
     voltage_vars.initialize_from_data(vt);
 
-    capacity_vars.initialize_from_data(vt, t);
+    auto cap = new battery_capacity_params();
+    cap->initialize_from_data(vt, t);
+    capacity_vars = std::shared_ptr<const battery_capacity_params>(cap);
 
-    lifetime.initialize_from_data(vt, t, true);
+//    auto life = new battery_lifetime_params();
+//    life->initialize_from_data(vt, t);
+
 
     losses.initialize_from_data(vt, t);
 }

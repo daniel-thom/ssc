@@ -12,7 +12,6 @@ const double tolerance = 0.001;
 namespace storage_params{
     enum CHEMS{ LEAD_ACID, LITHIUM_ION, VANADIUM_REDOX, IRON_FLOW};
     enum REPLACEMENT { NONE, CAPACITY, SCHEDULE };
-    enum CALENDAR_OPTIONS {NA, LITHIUM_ION_CALENDAR_MODEL, CALENDAR_LOSS_TABLE};
     enum LOSSES { MONTHLY, TIMESERIES};
 }
 
@@ -61,16 +60,28 @@ public:
 };
 
 
-struct storage_state
+class storage_time_state
 {
+private:
     /* Changing time values */
     size_t year;
     size_t hour;
-    size_t step;
+    size_t steps_per_hour;
     size_t index;                                   // lifetime_index (0 - nyears * steps_per_hour * 8760)
     size_t lifetime_index;                              // index for one year (0- steps_per_hour * 8760)
 
-    void initialize();
+public:
+    storage_time_state(size_t step_hr);
+
+    size_t get_year() const {return year;}
+    size_t get_hour() const {return hour;}
+    size_t get_step() const {return steps_per_hour;}
+    size_t get_index() const {return index;}
+    size_t get_lifetime_index() const {return lifetime_index;}
+
+    void increment_storage_time();
+
+    void reset_storage_time(size_t index = 0);
 };
 
 
@@ -81,20 +92,19 @@ struct battery_lifetime_params
 {
     std::shared_ptr<const storage_time_params> time;
 
-    util::matrix_t<double> lifetime_matrix;
+    util::matrix_t<double> cycle_matrix;
 
-    int calendar_choice;                            // 0=NoCalendarDegradation,1=LithiomIonModel,2=InputLossTable
+    enum CALENDAR_OPTIONS {NONE, MODEL, TABLE} calendar_choice;
 
     double calendar_q0;
     double calendar_a;
     double calendar_b;
     double calendar_c;
 
-    util::matrix_t<double> calendar_lifetime_matrix;
+    util::matrix_t<double> calendar_matrix;
 
-    storage_replacement_params replacement;
+    void initialize_from_data(var_table &vt, storage_time_params&);
 
-    void initialize_from_data(var_table &vt, storage_time_params&, bool batt_not_fuelcell);
 };
 
 
@@ -102,19 +112,19 @@ struct battery_voltage_params
 {
     int num_cells_series;
     int num_strings;
-
-    int voltage_choice;                             // 0=UseVoltageModel,1=InputVoltageTable
-
     double Vnom_default;
+    double resistance;
+
+    enum {MODEL, TABLE} voltage_choice;
+
+    //voltage choice 0
     double Vfull;
     double Vexp;
     double Vnom;
     double Qfull;
-    double Qfull_flow;
     double Qexp;
     double Qnom;
     double C_rate;
-    double resistance;
 
     // voltage_choice 1
     util::matrix_t<double> voltage_matrix;
@@ -160,7 +170,6 @@ struct battery_capacity_params{
     double initial_SOC;                     // 0-100
     double minimum_SOC;
     double maximum_SOC;
-    double maximum_DOD;
 
     struct{
         double q20;                // equal to qmax
@@ -181,9 +190,9 @@ struct battery_properties_params
 
     battery_voltage_params voltage_vars;
 
-    battery_capacity_params capacity_vars;
+    std::shared_ptr<const battery_capacity_params> capacity_vars;
 
-    battery_lifetime_params lifetime;
+    std::shared_ptr<const battery_lifetime_params> lifetime;
 
     battery_losses_params losses;
 
