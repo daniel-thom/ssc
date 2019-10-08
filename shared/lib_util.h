@@ -48,9 +48,9 @@ Define _DEBUG if compile with debugging
 */
 
 #if defined(_MSC_VER) && defined(_WIN32) && !defined(_WIN64)
-#define UTIL_ASSERT(x) {if(!(x)) throw std::runtime_error("matrix_t access '" + std::string(__func__) + "' invalid access.");}
+#define UTIL_ASSERT(x) {if(!(x)) throw std::runtime_error("matrix_t access '" + std::string(__func__) + "' invalid access in " + __FUNCTION__);}
 #else
-#define UTIL_ASSERT(X) {if(!(X)) throw std::runtime_error("matrix_t method '" + std::string(__func__) + "' invalid access.");}
+#define UTIL_ASSERT(X) {if(!(X)) throw std::runtime_error("matrix_t method '" + std::string(__func__) + "' invalid access in " + __PRETTY_FUNCTION__);}
 #endif
 
 #if defined(_DEBUG)

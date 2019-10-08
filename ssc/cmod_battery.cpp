@@ -117,8 +117,8 @@ var_info vtab_battery_inputs[] = {
 	// replacement inputs
 	{ SSC_INPUT,        SSC_NUMBER,     "batt_replacement_capacity",                   "Capacity degradation at which to replace battery",       "%",        "",                     "Battery",       "",                           "",                             "" },
 	{ SSC_INPUT,        SSC_NUMBER,     "batt_replacement_option",                     "Enable battery replacement?",                             "0=none,1=capacity based,2=user schedule", "", "Battery", "?=0",                  "INTEGER,MIN=0,MAX=2",          "" },
-	{ SSC_INPUT,        SSC_ARRAY,      "batt_replacement_schedule",                   "Battery bank replacements per year (user specified)",     "number/year","",                  "Battery",      "batt_replacement_option=2",   "",                             "" },
-	{ SSC_INPUT,        SSC_ARRAY,      "batt_replacement_schedule_percent",           "Percentage of battery capacity to replace in year",      "%","",                  "Battery",      "batt_replacement_option=2",   "",                             "" },
+	{ SSC_INPUT,        SSC_ARRAY,      "batt_replacement_schedule",                   "Number of Battery bank replacements per year (user specified)", "number/year","",                  "Battery",      "batt_replacement_option=2",   "",                             "" },
+	{ SSC_INPUT,        SSC_ARRAY,      "batt_replacement_schedule_percent",           "Max percentage of nominal battery capacity to replace in year",      "%","",                  "Battery",      "batt_replacement_option=2",   "",                             "" },
 	{ SSC_INPUT,        SSC_ARRAY,      "om_replacement_cost1",                        "Cost to replace battery per kWh",                        "$/kWh",    "",                     "Battery",       "",                           "",                             "" },
 
 	// thermal inputs
@@ -321,7 +321,7 @@ battstor::battstor(var_table& vt, bool setup_model, size_t nrec, double dt_hr, b
 			batt_vars->batt_computed_series = vt.as_integer("batt_computed_series");
 			batt_vars->batt_computed_strings = vt.as_integer("batt_computed_strings");
 			batt_vars->batt_kwh = vt.as_double("batt_computed_bank_capacity");
-			batt_vars->batt_kw = vt.as_double("batt_power_discharge_max");
+			batt_vars->batt_kw = vt.as_double("batt_power_discharge_max_kwac");
 
 			// Voltage properties
 			batt_vars->batt_voltage_choice = vt.as_integer("batt_voltage_choice");
@@ -381,7 +381,10 @@ battstor::battstor(var_table& vt, bool setup_model, size_t nrec, double dt_hr, b
 
 				batt_vars->pv_clipping_forecast = vt.as_vector_double("batt_pv_clipping_forecast");
 				batt_vars->pv_dc_power_forecast = vt.as_vector_double("batt_pv_dc_forecast");
-				double ppa_price = vt.as_double("ppa_price_input");
+				size_t count_ppa_price_input;
+				ssc_number_t* ppa_price = vt.as_array("ppa_price_input", &count_ppa_price_input);
+
+//				double ppa_price = cm.as_double("ppa_price_input");
 				int ppa_multiplier_mode = vt.as_integer("ppa_multiplier_model");
 
 				if (ppa_multiplier_mode == 0) {
@@ -389,12 +392,12 @@ battstor::battstor(var_table& vt, bool setup_model, size_t nrec, double dt_hr, b
 						vt.as_matrix_unsigned_long("dispatch_sched_weekday"), 
 						vt.as_matrix_unsigned_long("dispatch_sched_weekend"), 
 						step_per_hour,
-						vt.as_vector_double("dispatch_tod_factors"), ppa_price);
+						vt.as_vector_double("dispatch_tod_factors"), ppa_price[0]);
 				}
 				else {
 					batt_vars->ppa_price_series_dollar_per_kwh = vt.as_vector_double("dispatch_factors_ts");
 					for (size_t i = 0; i < batt_vars->ppa_price_series_dollar_per_kwh.size(); i++) {
-						batt_vars->ppa_price_series_dollar_per_kwh[i] *= ppa_price;
+						batt_vars->ppa_price_series_dollar_per_kwh[i] *= ppa_price[0];
 					}
 				}
 				outMarketPrice = vt.allocate("market_sell_rate_series_yr1",batt_vars->ppa_price_series_dollar_per_kwh.size());
@@ -588,7 +591,7 @@ battstor::battstor(var_table& vt, bool setup_model, size_t nrec, double dt_hr, b
 			else
 			{
 				batt_vars->inverter_model = SharedInverter::NONE;
-				batt_vars->inverter_count = 0.96;
+				batt_vars->inverter_count = 1;
 				batt_vars->inverter_efficiency = batt_vars->batt_ac_dc_efficiency;
 				batt_vars->inverter_paco = batt_vars->batt_kw;
 			}
@@ -793,20 +796,21 @@ battstor::battstor(var_table& vt, bool setup_model, size_t nrec, double dt_hr, b
 		throw exec_error("battery", "capacity vs temperature matrix must have two columns and at least two rows");
 	}
 
-	if (batt_vars->T_room.size() != nrec) {
-		throw exec_error("battery", "Environment temperature input length must equal number of weather file records");
+	if (batt_vars->T_room.size() > 1 && batt_vars->T_room.size() != nrec) {
+		throw exec_error("battery", "Battery ambient temperature if provided as time series must equal number of weather file records");
 	}
 
 	thermal_model = new thermal_t(
-		dt_hr,
-		batt_vars->batt_mass, // [kg]
-		batt_vars->batt_length, // [m]
-		batt_vars->batt_width, // [m]
-		batt_vars->batt_height, // [m]
-		batt_vars->batt_Cp, // [J/kgK]
-		batt_vars->batt_h_to_ambient, // W/m2K
-		batt_vars->T_room, // K
-		batt_vars->cap_vs_temp);
+            dt_hr,
+            batt_vars->batt_mass, // [kg]
+            batt_vars->batt_length, // [m]
+            batt_vars->batt_width, // [m]
+            batt_vars->batt_height,
+            batt_vars->batt_resistance, // [m]
+            batt_vars->batt_Cp, // [J/kgK]
+            batt_vars->batt_h_to_ambient, // W/m2K
+            batt_vars->T_room, // K
+            batt_vars->cap_vs_temp);
 
 
 	battery_model = new battery_t(
@@ -850,8 +854,9 @@ battstor::battstor(var_table& vt, bool setup_model, size_t nrec, double dt_hr, b
 		throw exec_error("battery", "system loss input length must be 1 or equal to weather file length for time series input mode");
 	}
 
-	losses_model = new losses_t(dt_hr, lifetime_model, thermal_model, capacity_model, batt_vars->batt_loss_choice,
-		batt_vars->batt_losses_charging,batt_vars->batt_losses_discharging, batt_vars->batt_losses_idle, batt_vars->batt_losses);
+	losses_model = new losses_t(dt_hr, batt_vars->batt_loss_choice,
+                                batt_vars->batt_losses_charging, batt_vars->batt_losses_discharging,
+                                batt_vars->batt_losses_idle, batt_vars->batt_losses);
 
 	battery_model->initialize(capacity_model, voltage_model, lifetime_model, thermal_model, losses_model);
 	battery_metrics = new battery_metrics_t(dt_hr);
@@ -1208,8 +1213,8 @@ void battstor::check_replacement_schedule()
 		if (replace) {
 			double replacement_percent = batt_vars->batt_replacement_schedule_percent[year];
 			force_replacement(replacement_percent);
-		}
 	}
+}
 }
 void battstor::force_replacement(double replacement_percent)
 {
@@ -1266,7 +1271,7 @@ void battstor::outputs_fixed(var_table *vt)
 		outMaxCharge[index] = (ssc_number_t)(capacity_model->qmax());
 		outMaxChargeThermal[index] = (ssc_number_t)(capacity_model->qmax_thermal());
 	
-		outBatteryTemperature[index] = (ssc_number_t)(thermal_model->T_battery() - 273.15);
+		outBatteryTemperature[index] = (ssc_number_t)(thermal_model->get_T_battery() - 273.15);
 		outCapacityThermalPercent[index] = (ssc_number_t)(thermal_model->capacity_percent());
 	}
 

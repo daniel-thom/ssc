@@ -28,6 +28,7 @@ public:
 
     explicit UtilityRate(std::vector<double>&& ecRealTimeBuy);
 
+    bool getUseRealTimePrices(){return m_useRealTimePrices;}
 
     UtilityRate(const UtilityRate& tmp);
 

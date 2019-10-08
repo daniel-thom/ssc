@@ -59,7 +59,7 @@
 
 SSCEXPORT int ssc_version()
 {
-	return 211;
+	return 218;
 }
 
 SSCEXPORT const char *ssc_build_info()
@@ -105,6 +105,7 @@ extern module_entry_info
 	cm_entry_equpartflip,
 	cm_entry_saleleaseback,
 	cm_entry_singleowner,
+	cm_entry_merchantplant,
 	cm_entry_host_developer,
 	cm_entry_swh,
 	cm_entry_geothermal,
@@ -159,6 +160,8 @@ extern module_entry_info
 	cm_entry_thermalrate,
 	cm_entry_mhk_tidal,
 	cm_entry_mhk_wave,
+	cm_entry_mhk_costs,
+	cm_entry_wave_file_reader,
 	cm_entry_grid;
 
 /* official module table */
@@ -193,6 +196,7 @@ static module_entry_info *module_table[] = {
 	&cm_entry_equpartflip,
 	&cm_entry_saleleaseback,
 	&cm_entry_singleowner,
+	&cm_entry_merchantplant,
 	&cm_entry_host_developer,
 	&cm_entry_swh,
 	&cm_entry_geothermal,
@@ -247,6 +251,8 @@ static module_entry_info *module_table[] = {
 	&cm_entry_thermalrate,
 	&cm_entry_mhk_tidal,
 	&cm_entry_mhk_wave,
+	&cm_entry_mhk_costs,
+	&cm_entry_wave_file_reader,
 	&cm_entry_grid,
 	0 };
 
