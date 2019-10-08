@@ -113,7 +113,6 @@ void dispatch_t::delete_clone()
 dispatch_t::~dispatch_t()
 {
 	// original _Battery doesn't need deleted, since was a pointer passed in
-	_Battery_initial->delete_clone();
 	delete _Battery_initial;
 }
 void dispatch_t::finalize(size_t idx, double &I)
@@ -1487,7 +1486,7 @@ void dispatch_automatic_front_of_meter_t::update_dispatch(size_t hour_of_year, s
 			revenueToPVCharge = _P_pv_dc[idx_year1] > 0 ? *max_ppa_cost * m_etaDischarge - ppa_cost / m_etaPVCharge - m_cycleCost : 0;
 
 			/*! Computed revenue to charge from PV in each of next X hours ($/kWh)*/
-			size_t t_duration = static_cast<size_t>(std::ceilf(_Battery->battery_energy_nominal() / m_batteryPower->powerBatteryChargeMaxDC));
+			size_t t_duration = static_cast<size_t>(ceilf(_Battery->battery_energy_nominal() / m_batteryPower->powerBatteryChargeMaxDC));
 			size_t pv_hours_on;
 			double revenueToPVChargeMax = 0;
 			if (m_batteryPower->canPVCharge) {
@@ -1739,8 +1738,14 @@ void battery_metrics_t::accumulate_battery_charge_components(double P_tofrom_bat
 		_e_charge_from_grid += P_grid_to_batt * _dt_hour;
 		_e_charge_from_grid_annual += P_grid_to_batt * _dt_hour;
 	}
-	_average_efficiency = 100.*(_e_discharge_accumulated / _e_charge_accumulated);
-	_average_roundtrip_efficiency = 100.*(_e_discharge_accumulated / (_e_charge_accumulated + _e_loss_system));
+	if (_e_charge_accumulated == 0){
+        _average_efficiency = 0;
+        _average_roundtrip_efficiency = 0;
+	}
+	else{
+	    _average_efficiency = 100.*(_e_discharge_accumulated / _e_charge_accumulated);
+	    _average_roundtrip_efficiency = 100.*(_e_discharge_accumulated / (_e_charge_accumulated + _e_loss_system));
+	}
 	_pv_charge_percent = 100.*(_e_charge_from_pv / _e_charge_accumulated);
 }
 void battery_metrics_t::accumulate_grid_annual(double P_tofrom_grid)
