@@ -243,19 +243,19 @@ namespace util
 			return t_array[r][c];
 		}
 		
-		T &operator()(size_t r, size_t c)
+		inline T &operator()(size_t r, size_t c)
 		{
-//	#ifdef _LIB_UTIL_CHECK_
-//			UTIL_ASSERT( r >= 0 && r < n_rows && c >= 0 && c < n_cols );
-//	#endif
+	#ifdef _LIB_UTIL_CHECK_
+			UTIL_ASSERT( r >= 0 && r < n_rows && c >= 0 && c < n_cols );
+	#endif
 			return t_array[r][c];
 		}
 
-		const T &operator()(size_t r, size_t c) const
+		inline const T &operator()(size_t r, size_t c) const
 		{
-//	#ifdef _LIB_UTIL_CHECK_
-//			UTIL_ASSERT( r >= 0 && r < n_rows && c >= 0 && c < n_cols );
-//	#endif
+	#ifdef _LIB_UTIL_CHECK_
+			UTIL_ASSERT( r >= 0 && r < n_rows && c >= 0 && c < n_cols );
+	#endif
 			return t_array[r][c];
 		}
 	};
