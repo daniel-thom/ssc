@@ -52,6 +52,8 @@ UtilityRate::UtilityRate(const UtilityRate& tmp){
     for (auto& kv : tmp.m_energyTiersPerPeriod) {
         m_energyTiersPerPeriod[kv.first] = kv.second;
     }
+    m_ecRealTimeBuy = tmp.m_ecRealTimeBuy;
+    m_useRealTimePrices = tmp.m_useRealTimePrices;
 }
 
 

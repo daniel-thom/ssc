@@ -48,9 +48,9 @@ Define _DEBUG if compile with debugging
 */
 
 #if defined(_MSC_VER) && defined(_WIN32) && !defined(_WIN64)
-#define UTIL_ASSERT(x) {if(!(x)) throw std::runtime_error("matrix_t access '" + std::string(__func__) + "' invalid access.");}
+#define UTIL_ASSERT(x) {if(!(x)) throw std::runtime_error("matrix_t access '" + std::string(__func__) + "' invalid access in " + __FUNCTION__);}
 #else
-#define UTIL_ASSERT(X) {if(!(X)) throw std::runtime_error("matrix_t method '" + std::string(__func__) + "' invalid access.");}
+#define UTIL_ASSERT(X) {if(!(X)) throw std::runtime_error("matrix_t method '" + std::string(__func__) + "' invalid access in " + __PRETTY_FUNCTION__);}
 #endif
 
 #if defined(_DEBUG)
@@ -243,19 +243,19 @@ namespace util
 			return t_array[r][c];
 		}
 		
-		inline T &operator()(size_t r, size_t c)
+		T &operator()(size_t r, size_t c)
 		{
-	#ifdef _LIB_UTIL_CHECK_
-			UTIL_ASSERT( r >= 0 && r < n_rows && c >= 0 && c < n_cols );
-	#endif
+//	#ifdef _LIB_UTIL_CHECK_
+//			UTIL_ASSERT( r >= 0 && r < n_rows && c >= 0 && c < n_cols );
+//	#endif
 			return t_array[r][c];
 		}
 
-		inline const T &operator()(size_t r, size_t c) const
+		const T &operator()(size_t r, size_t c) const
 		{
-	#ifdef _LIB_UTIL_CHECK_
-			UTIL_ASSERT( r >= 0 && r < n_rows && c >= 0 && c < n_cols );
-	#endif
+//	#ifdef _LIB_UTIL_CHECK_
+//			UTIL_ASSERT( r >= 0 && r < n_rows && c >= 0 && c < n_cols );
+//	#endif
 			return t_array[r][c];
 		}
 	};

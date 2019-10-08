@@ -1,7 +1,7 @@
 #ifndef _CMOD_WINDPOWER_BUILDER_H_
 #define _CMOD_WINDPOWER_BUILDER_H_
 
-#include "vartab.h"
+#include "../shared/vartab.h"
 #include "sscapi.h"
 
 #ifdef __cplusplus

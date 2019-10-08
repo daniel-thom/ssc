@@ -4,6 +4,7 @@
 #include "sscapi.h"
 #include "cmod_windpower_eqns.h"
 #include "cmod_pvsamv1_eqns.h"
+#include "cmod_mhk_eqns.h"
 
 
 typedef void (*ssc_equation_ptr)(ssc_data_t data);
@@ -20,7 +21,9 @@ static ssc_equation_entry ssc_equation_table [] = {
             "Windpower", Turbine_calculate_powercurve_doc},
         {"Reopt_size_battery_post", Reopt_size_battery_params,
             "Pvsamv1", Reopt_size_battery_params_doc},
-        {nullptr, nullptr, nullptr, nullptr}
+		{"me_array_cable_length", me_array_cable_length,
+						   "Marine energy", me_array_cable_length_doc},
+{nullptr, nullptr, nullptr, nullptr}
 };
 
 

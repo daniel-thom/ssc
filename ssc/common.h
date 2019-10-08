@@ -43,6 +43,7 @@ extern var_info vtab_dc_adjustment_factors[];
 extern var_info vtab_sf_adjustment_factors[];
 extern var_info vtab_technology_outputs[];
 extern var_info vtab_resilience_outputs[];
+extern var_info vtab_grid_curtailment[];
 
 class adjustment_factors
 {
