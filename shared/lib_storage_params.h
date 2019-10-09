@@ -10,9 +10,7 @@ const double low_tolerance = 0.01;
 const double tolerance = 0.001;
 
 namespace storage_params{
-    enum CHEMS{ LEAD_ACID, LITHIUM_ION, VANADIUM_REDOX, IRON_FLOW};
     enum REPLACEMENT { NONE, CAPACITY, SCHEDULE };
-    enum LOSSES { MONTHLY, TIMESERIES};
 }
 
 struct storage_config_params
@@ -65,8 +63,9 @@ class storage_time_state
 private:
     /* Changing time values */
     size_t year;
-    size_t hour;
+    size_t hour_year1;
     size_t steps_per_hour;
+    size_t steps_per_year;
     size_t index;                                   // lifetime_index (0 - nyears * steps_per_hour * 8760)
     size_t lifetime_index;                              // index for one year (0- steps_per_hour * 8760)
 
@@ -74,14 +73,14 @@ public:
     storage_time_state(size_t step_hr);
 
     size_t get_year() const {return year;}
-    size_t get_hour() const {return hour;}
+    size_t get_hour() const {return hour_year1;}
     size_t get_step() const {return steps_per_hour;}
     size_t get_index() const {return index;}
     size_t get_lifetime_index() const {return lifetime_index;}
 
-    void increment_storage_time();
+    storage_time_state increment(size_t steps = 1);
 
-    void reset_storage_time(size_t index = 0);
+    storage_time_state reset_storage_time(size_t index = 0);
 };
 
 
@@ -94,7 +93,7 @@ struct battery_lifetime_params
 
     util::matrix_t<double> cycle_matrix;
 
-    enum CALENDAR_OPTIONS {NONE, MODEL, TABLE} calendar_choice;
+    enum CALENDAR {NONE, MODEL, TABLE} choice;
 
     double calendar_q0;
     double calendar_a;
@@ -115,7 +114,7 @@ struct battery_voltage_params
     double Vnom_default;
     double resistance;
 
-    enum {MODEL, TABLE} voltage_choice;
+    enum VOLTAGE{MODEL, TABLE} choice;
 
     //voltage choice 0
     double Vfull;
@@ -138,12 +137,10 @@ struct battery_thermal_params
     std::shared_ptr<const storage_time_params> time;
 
     double mass;
-    double length;
-    double width;
-    double height;
+    double surface_area;
     double resistance;                          // internal battery resistance (Ohm)
     double Cp;                                  // [J/KgK] - battery specific heat capacity
-    util::matrix_t<double> cap_vs_temp;
+    util::matrix_t<double> cap_vs_temp;         // [Ah] [K]
     double h;                                   // [Wm2K] - general heat transfer coefficient
     std::vector<double> T_room_K;               // [K] - storage room temperature
 
@@ -154,7 +151,7 @@ struct battery_losses_params
 {
     std::shared_ptr<const storage_time_params> time;
 
-    int loss_monthly_or_timeseries;
+    enum MODE {MONTHLY, TIMESERIES} mode;
     std::vector<double> losses_charging;
     std::vector<double> losses_discharging;
     std::vector<double> losses_idle;
@@ -184,17 +181,17 @@ struct battery_capacity_params{
 
 struct battery_properties_params
 {
-    int chem;
+    enum CHEM{ LEAD_ACID, LITHIUM_ION, VANADIUM_REDOX, IRON_FLOW} chem;
 
-    battery_thermal_params thermal;
+    std::shared_ptr<const battery_capacity_params> capacity;
 
-    battery_voltage_params voltage_vars;
+    std::shared_ptr<const battery_voltage_params> voltage;
 
-    std::shared_ptr<const battery_capacity_params> capacity_vars;
+    std::shared_ptr<const battery_thermal_params> thermal;
 
     std::shared_ptr<const battery_lifetime_params> lifetime;
 
-    battery_losses_params losses;
+    std::shared_ptr<const battery_losses_params> losses;
 
     void initialize_from_data(var_table& vt, storage_time_params& t);
 };

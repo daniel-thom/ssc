@@ -56,7 +56,7 @@ public:
     virtual double get_battery_voltage_nominal() = 0; // nominal voltage of battery
     virtual double get_R_battery() = 0; // computed battery resistance
 
-    virtual battery_voltage_params get_params() const = 0;
+    virtual std::shared_ptr<const battery_voltage_params> get_params() const = 0;
 
 };
 
@@ -83,25 +83,25 @@ public:
 class voltage_table : public battery_voltage_interface
 {
 public:
-    voltage_table(const battery_voltage_params& p);
+    voltage_table(const std::shared_ptr<const battery_voltage_params>& p);
 
     voltage_table(const voltage_table&);
 
     void updateVoltage(const capacity_state &capacity, double T_battery_K = 0) override;
 
-    void set_batt_voltage(double v) override { cell_voltage_state = v / params.num_cells_series;}
+    void set_batt_voltage(double v) override { cell_voltage_state = v / params->num_cells_series;}
 
-    double get_battery_voltage() override {return params.num_cells_series * cell_voltage_state;};
+    double get_battery_voltage() override {return params->num_cells_series * cell_voltage_state;};
     double get_cell_voltage() override { return cell_voltage_state; };
-    double get_battery_voltage_nominal() {return params.num_cells_series * params.Vnom_default;};
-    double get_R_battery() override { return params.resistance * params.num_cells_series / params.num_strings; }
+    double get_battery_voltage_nominal() {return params->num_cells_series * params->Vnom_default;};
+    double get_R_battery() override { return params->resistance * params->num_cells_series / params->num_strings; }
 
-    battery_voltage_params get_params() const override {return params;};
+    std::shared_ptr<const battery_voltage_params> get_params() const override {return params;};
 
 private:
     double cell_voltage_state;         // closed circuit voltage per cell [V]
 
-    const battery_voltage_params params;
+    const std::shared_ptr<const battery_voltage_params> params;
 
     std::vector<table_point> v_table;
 
@@ -114,7 +114,7 @@ private:
 class voltage_dynamic : public battery_voltage_interface
 {
 public:
-    voltage_dynamic(const battery_voltage_params& p);
+    voltage_dynamic(const std::shared_ptr<const battery_voltage_params>& p);
 
     // copy from voltage to this
     voltage_dynamic(const voltage_dynamic&);
@@ -122,19 +122,19 @@ public:
     void parameter_compute();
     void updateVoltage(const capacity_state &capacity, double T_battery_K) override;
 
-    void set_batt_voltage(double v) override { cell_voltage_state = v / params.num_cells_series;}
+    void set_batt_voltage(double v) override { cell_voltage_state = v / params->num_cells_series;}
 
-    double get_battery_voltage() override {return params.num_cells_series * cell_voltage_state;};
+    double get_battery_voltage() override {return params->num_cells_series * cell_voltage_state;};
     double get_cell_voltage() override { return cell_voltage_state; };
-    double get_battery_voltage_nominal() override {return params.num_cells_series * params.Vnom_default;};
-    double get_R_battery() override { return params.resistance * params.num_cells_series / params.num_strings; }
+    double get_battery_voltage_nominal() override {return params->num_cells_series * params->Vnom_default;};
+    double get_R_battery() override { return params->resistance * params->num_cells_series / params->num_strings; }
 
-    battery_voltage_params get_params() const override {return params;};
+    std::shared_ptr<const battery_voltage_params> get_params() const override {return params;};
 
 protected:
     double cell_voltage_state;         // closed circuit voltage per cell [V]
 
-    const battery_voltage_params params;
+    const std::shared_ptr<const battery_voltage_params> params;
 
     double A;
     double B0;
@@ -149,26 +149,26 @@ protected:
 class voltage_vanadium_redox : public battery_voltage_interface
 {
 public:
-    explicit voltage_vanadium_redox(const battery_voltage_params& p);
+    explicit voltage_vanadium_redox(const std::shared_ptr<const battery_voltage_params>& p);
 
     // copy from voltage to this
     voltage_vanadium_redox(const voltage_vanadium_redox &);
 
     void updateVoltage(const capacity_state &capacity, double T_battery_K) override;
 
-    void set_batt_voltage(double v) override { cell_voltage_state = v / params.num_cells_series;}
+    void set_batt_voltage(double v) override { cell_voltage_state = v / params->num_cells_series;}
 
-    double get_battery_voltage() override {return params.num_cells_series * cell_voltage_state;};
+    double get_battery_voltage() override {return params->num_cells_series * cell_voltage_state;};
     double get_cell_voltage() override { return cell_voltage_state; };
-    double get_battery_voltage_nominal() override {return params.num_cells_series * params.Vnom_default;};
-    double get_R_battery() override { return params.resistance * params.num_cells_series / params.num_strings; }
+    double get_battery_voltage_nominal() override {return params->num_cells_series * params->Vnom_default;};
+    double get_R_battery() override { return params->resistance * params->num_cells_series / params->num_strings; }
 
-    battery_voltage_params get_params() const override {return params;};
+    std::shared_ptr<const battery_voltage_params> get_params() const override {return params;};
 
 private:
     double cell_voltage_state;         // closed circuit voltage per cell [V]
 
-    const battery_voltage_params params;
+    const std::shared_ptr<const battery_voltage_params> params;
 
     constexpr const static double R_molar = 8.314;            // Molar gas constant [J/mol/K]^M
     constexpr const static double F = 26.801 * 3600;          // Faraday constant [As/mol]^M

@@ -168,9 +168,13 @@ public:
     /// Return the number of total replacements in the year
     int get_replacements();
 
-    void set_state(const lifetime_state& s) {state = s;}
+    void set_state(const lifetime_state& s) {
+        cycle_model->set_state(s.cycle);
+        calendar_model->set_state(s.calendar);
+        state.q = s.q;
+    }
 
-    lifetime_state get_state() const {return state;}
+    lifetime_state get_state() {return state;}
 
     std::shared_ptr<const battery_lifetime_params> get_params() const {return params;}
 
@@ -186,10 +190,6 @@ protected:
     /// Underlying lifetime calendar model
     std::unique_ptr<lifetime_calendar> calendar_model;
 
-    void update_state(){
-        state.calendar = calendar_model->get_state();
-        state.cycle = cycle_model->get_state();
-    }
 };
 
 

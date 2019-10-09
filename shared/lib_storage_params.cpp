@@ -47,20 +47,32 @@ void storage_time_params::initialize_from_data(var_table &vt) {
 }
 
 storage_time_state::storage_time_state(size_t step_hr){
-    year = hour = index = lifetime_index = 0;
+    year = hour_year1 = index = lifetime_index = 0;
     steps_per_hour = step_hr;
+    steps_per_year = 8760 * steps_per_hour;
 }
 
-void storage_time_state::increment_storage_time(){
-    index++;
-    lifetime_index++;
-    if (index >= 8760)
-        year++;
-    if (index % steps_per_hour == 0)
-        hour++;
+storage_time_state storage_time_state::increment(size_t steps){
+    index += steps;
+    lifetime_index += steps;
+    if (index >= steps_per_year ){
+        year += index / steps_per_year;
+        index %= steps_per_year;
+    }
+    if (steps == 1 && steps_per_hour == 1)
+        hour_year1++;
+    else{
+        hour_year1 = index / steps_per_hour;
+    }
+    return *this;
 }
 
-void storage_time_state::reset_storage_time(size_t index) {
+storage_time_state storage_time_state::reset_storage_time(size_t lifetime_idx) {
+    lifetime_index = lifetime_idx;
+    index = lifetime_index % steps_per_year;
+    year = lifetime_index/steps_per_year;
+    hour_year1 = index / steps_per_hour;
+    return *this;
 }
 
 void battery_lifetime_params::initialize_from_data(var_table &vt, storage_time_params &t){
@@ -73,14 +85,14 @@ void battery_lifetime_params::initialize_from_data(var_table &vt, storage_time_p
     int choice = vt.as_integer("batt_calendar_choice");
     switch (choice){
         case 0 : {
-            calendar_choice = battery_lifetime_params::TABLE;
+            choice = battery_lifetime_params::TABLE;
             calendar_matrix = vt.as_matrix("batt_calendar_lifetime_matrix");
             if ((calendar_matrix.nrows() < 2 || calendar_matrix.ncols() != 2))
                 throw general_error("Battery calendar lifetime matrix must have 2 columns and at least 2 rows");
             break;
         }
         case 1 : {
-            calendar_choice = battery_lifetime_params::MODEL;
+            choice = battery_lifetime_params::MODEL;
             calendar_q0 = vt.as_double("batt_calendar_q0");
             calendar_a = vt.as_double("batt_calendar_a");
             calendar_b = vt.as_double("batt_calendar_b");
@@ -94,52 +106,59 @@ void battery_lifetime_params::initialize_from_data(var_table &vt, storage_time_p
 
 void battery_losses_params::initialize_from_data(var_table &vt, storage_time_params &t){
     time = std::make_shared<storage_time_params>(t);
-    loss_monthly_or_timeseries = vt.as_integer("batt_loss_choice");
     auto charging = vt.as_vector_double("batt_losses_charging");
     auto discharging = vt.as_vector_double("batt_losses_discharging");
     auto idle = vt.as_vector_double("batt_losses_idle");
     auto full = vt.as_vector_double("batt_losses");
 
-    // Check loss inputs
-    if (loss_monthly_or_timeseries == storage_params::LOSSES::MONTHLY){
-        if (!(losses_charging.size() == 1 || losses_charging.size() == 12))
-            throw general_error("charging loss length must be 1 or 12 for monthly input mode");
-        if (!(losses_discharging.size() == 1 || losses_discharging.size() == 12))
-            throw general_error("discharging loss length must be 1 or 12 for monthly input mode");
-        if (!(losses_idle.size() == 1 || losses_idle.size() == 12))
-            throw general_error("idle loss length must be 1 or 12 for monthly input mode");
+    mode = static_cast<MODE>(vt.as_integer("batt_loss_choice"));
 
-        std::vector<double>* source[3] = {&charging, &discharging, &idle};
-        std::vector<double>* dest[3] = {&losses_charging, &losses_discharging, &losses_idle};
-        for (size_t i = 0; i < 3; i++) {
-            if (source[i]->size() == 1) {
-                for (size_t m = 0; m < 12; m++) {
-                    dest[i]->emplace_back((*source[i])[0]);
+    switch (mode){
+        case MONTHLY: {
+            if (!(losses_charging.size() == 1 || losses_charging.size() == 12))
+                throw general_error("charging loss length must be 1 or 12 for monthly input mode");
+            if (!(losses_discharging.size() == 1 || losses_discharging.size() == 12))
+                throw general_error("discharging loss length must be 1 or 12 for monthly input mode");
+            if (!(losses_idle.size() == 1 || losses_idle.size() == 12))
+                throw general_error("idle loss length must be 1 or 12 for monthly input mode");
+
+            std::vector<double>* source[3] = {&charging, &discharging, &idle};
+            std::vector<double>* dest[3] = {&losses_charging, &losses_discharging, &losses_idle};
+            for (size_t i = 0; i < 3; i++) {
+                if (source[i]->size() == 1) {
+                    for (size_t m = 0; m < 12; m++) {
+                        dest[i]->emplace_back((*source[i])[0]);
+                    }
+                }
+                else if (charging.empty()) {
+                    for (size_t m = 0; m < 12; m++) {
+                        dest[i]->push_back(0);
+                    }
+                }
+                else {
+                    *(dest[i]) = std::move(*(source[i]));
                 }
             }
-            else if (charging.empty()) {
-                for (size_t m = 0; m < 12; m++) {
-                    dest[i]->push_back(0);
+            for (size_t i = 0; i < (size_t)(8760 / time->dt_hour); i++) {
+                losses_full.push_back(0);
+            }
+            break;
+        }
+        case TIMESERIES: {
+            if (full.size() != (size_t)(8760 / time->dt_hour)) {
+                for (size_t i = 0; i < (size_t)(8760 / time->dt_hour); i++) {
+                    losses_full.emplace_back(full[0]);
                 }
             }
             else {
-                *(dest[i]) = std::move(*(source[i]));
+                losses_full = std::move(full);
             }
+            break;
         }
-        for (size_t i = 0; i < (size_t)(8760 / time->dt_hour); i++) {
-            losses_full.push_back(0);
-        }
+        default:
+            throw general_error("batt_loss_choice not recognized, must be 0 (monthly) or 1 (timeseries)");
     }
-    else{
-        if (full.size() != (size_t)(8760 / time->dt_hour)) {
-            for (size_t i = 0; i < (size_t)(8760 / time->dt_hour); i++) {
-                losses_full.emplace_back(full[0]);
-            }
-        }
-        else {
-            losses_full = std::move(full);
-        }
-    }
+
 }
 
 void battery_voltage_params::initialize_from_data(var_table& vt){
@@ -147,17 +166,9 @@ void battery_voltage_params::initialize_from_data(var_table& vt){
     num_strings = vt.as_integer("batt_computed_strings");
     Vnom_default = vt.as_double("batt_Vnom_default");
 
-    int choice = vt.as_integer("batt_voltage_choice");
-    switch (choice){
-        case 0 : voltage_choice = MODEL;
-            break;
-        case 1 : voltage_choice = TABLE;
-            break;
-        default:
-            throw general_error("batt_voltage_choice not recognized, must be 0 (model) or 1 (table)");
-    }
+    choice = static_cast<VOLTAGE>(vt.as_integer("batt_voltage_choice"));
 
-    if (voltage_choice == 0){
+    if (choice == MODEL){
         Vfull = vt.as_double("batt_Vfull");
         Vexp = vt.as_double("batt_Vexp");
         Vnom = vt.as_double("batt_Vnom");
@@ -179,9 +190,7 @@ void battery_thermal_params::initialize_from_data(var_table &vt, storage_time_pa
     time = std::make_shared<storage_time_params>(t);
     cap_vs_temp = vt.as_matrix("cap_vs_temp");
     mass = vt.as_double("batt_mass");
-    length = vt.as_double("batt_length");
-    width = vt.as_double("batt_width");
-    height = vt.as_double("batt_height");
+    surface_area = pow(vt.as_double("batt_length"), 2) * 6;
     Cp = vt.as_double("batt_Cp");
     resistance = vt.as_double("batt_resistance");
     h = vt.as_double("batt_h_to_ambient");
@@ -189,6 +198,12 @@ void battery_thermal_params::initialize_from_data(var_table &vt, storage_time_pa
 
     for (auto& i : T_room_K) {
         i += 273.15; // convert C to K
+    }
+
+    size_t n = cap_vs_temp.nrows();
+    for (size_t i = 0; i < n; i++)
+    {
+        cap_vs_temp(i,0) += 273.15; // convert C to K
     }
 }
 
@@ -200,7 +215,7 @@ void battery_capacity_params::initialize_from_data(var_table &vt, storage_time_p
     maximum_SOC = vt.as_double("batt_maximum_soc");
     minimum_SOC = vt.as_double("batt_minimum_soc");
 
-    if (chem == storage_params::CHEMS::LEAD_ACID){
+    if (chem == battery_properties_params::LEAD_ACID){
         lead_acid.q10 = vt.as_double("LeadAcid_q10_computed");
         lead_acid.q20 = vt.as_double("LeadAcid_q20_computed");
         lead_acid.q1 = vt.as_double("LeadAcid_qn_computed");
@@ -212,19 +227,25 @@ void battery_capacity_params::initialize_from_data(var_table &vt, storage_time_p
 }
 
 void battery_properties_params::initialize_from_data(var_table& vt, storage_time_params& t){
-    chem = vt.as_integer("batt_chem");
+    chem = static_cast<CHEM>(vt.as_integer("batt_chem"));
 
-    thermal.initialize_from_data(vt, t);
+    auto therm = new battery_thermal_params();
+    therm->initialize_from_data(vt, t);
+    thermal = std::shared_ptr<battery_thermal_params>(therm);
 
-    voltage_vars.initialize_from_data(vt);
+    auto volt = new battery_voltage_params();
+    volt->initialize_from_data(vt);
+    voltage = std::shared_ptr<battery_voltage_params>(volt);
 
     auto cap = new battery_capacity_params();
     cap->initialize_from_data(vt, t);
-    capacity_vars = std::shared_ptr<const battery_capacity_params>(cap);
+    capacity = std::shared_ptr<const battery_capacity_params>(cap);
 
-//    auto life = new battery_lifetime_params();
-//    life->initialize_from_data(vt, t);
+    auto lif = new battery_lifetime_params();
+    lif->initialize_from_data(vt, t);
+    lifetime = std::shared_ptr<const battery_lifetime_params>(lif);
 
-
-    losses.initialize_from_data(vt, t);
+    auto los = new battery_losses_params();
+    los->initialize_from_data(vt, t);
+    losses = std::shared_ptr<const battery_losses_params>(los);
 }

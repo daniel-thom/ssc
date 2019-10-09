@@ -16,7 +16,7 @@ protected:
 
     std::shared_ptr<storage_time_params> time;
 
-    battery_voltage_params params;
+    std::shared_ptr<battery_voltage_params> params;
     std::shared_ptr<const battery_capacity_params> cap_params;
     double tol = 0.01;
     double error;
@@ -44,9 +44,9 @@ protected:
 
     void SetUp() override {
         lib_battery_voltage_test::SetUp();
-        params = battery_voltage_params({n_cells_series, n_strings, voltage_nom, R, battery_voltage_params::TABLE});
+        params = std::shared_ptr<battery_voltage_params>(new battery_voltage_params({n_cells_series, n_strings, voltage_nom, R, battery_voltage_params::TABLE}));
         util::matrix_t<double> table = util::matrix_t<double>(2, 2, &table_vals);
-        params.voltage_matrix = table;
+        params->voltage_matrix = table;
 
         model = std::unique_ptr<battery_voltage_interface>(new voltage_table(params));
     };
@@ -65,9 +65,9 @@ protected:
 
     void SetUp() override {
         lib_battery_voltage_test::SetUp();
-        params = battery_voltage_params({n_cells_series, n_strings, voltage_nom, R,
-                                         battery_voltage_params::TABLE, Vfull, Vexp, Vnom,
-                                         Qfull, Qexp, Qnom, C_rate});
+        params = std::shared_ptr<battery_voltage_params>(new battery_voltage_params(
+                {n_cells_series, n_strings, voltage_nom, R,
+                 battery_voltage_params::TABLE, Vfull, Vexp, Vnom,Qfull, Qexp, Qnom, C_rate}));
 
         model = std::unique_ptr<battery_voltage_interface>(new voltage_dynamic(params));
     }
@@ -78,8 +78,9 @@ class voltage_vanadium_redox_lib_battery_voltage_test : public lib_battery_volta
 protected:
     void SetUp(){
         lib_battery_voltage_test::SetUp();
-        params = battery_voltage_params({n_cells_series, n_strings, voltage_nom, R, battery_voltage_params::MODEL});
-        params.resistance = R;
+        params = std::shared_ptr<battery_voltage_params>(new battery_voltage_params(
+                {n_cells_series, n_strings, voltage_nom, R, battery_voltage_params::MODEL}));
+        params->resistance = R;
 
         model = std::unique_ptr<battery_voltage_interface>(new voltage_vanadium_redox(params));
     }

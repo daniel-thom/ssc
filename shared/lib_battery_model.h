@@ -8,52 +8,45 @@
 #include "lib_battery_voltage.h"
 #include "lib_battery_lifetime.h"
 
-/*
-Thermal classes
-*/
 struct thermal_state{
-    double R;			// [Ohm] - internal resistance
-    double T_battery;   // [K]
     double capacity_percent; //[%]
-    std::vector<std::string> messages;
-
-    void init();
+    double T_batt_avg;       // avg during timestep [K]
+    double T_batt_init;
+    double T_room_init;
+    double next_time_at_current_T_room;
 };
 
 class battery_thermal
 {
 public:
-    battery_thermal(const battery_thermal_params& p);
+    battery_thermal(const std::shared_ptr<const battery_thermal_params>& p);
 
     battery_thermal(const battery_thermal &);
 
     static constexpr const double T_max = 400;
 
     void updateTemperature(double I, const storage_time_state &time);
-    void replace_battery(size_t lifetimeIndex);
+    void replace_battery();
 
     // outputs
     double get_T_battery();
     double get_capacity_percent();
 
-    thermal_state get_state() const {return state;}
+    thermal_state get_state() {return state;}
     void set_state(const thermal_state& s) {state = s;}
 
-    battery_thermal_params get_params() const {return params; }
+    std::shared_ptr<const battery_thermal_params> get_params() const {return params; }
 
 private:
-    double f(double T_battery, double I, size_t lifetimeIndex);
-    double rk4(double I, double dt, size_t lifetimeIndex);
-    double trapezoidal(double I, double dt, size_t lifetimeIndex);
-    double implicit_euler(double I, double dt, size_t lifetimeIndex);
-
     void init();
 
-    const battery_thermal_params params;
+    const std::shared_ptr<const battery_thermal_params> params;
 
     thermal_state state;
 
-    double A;                                           // area assumes all surfaces exposed
+    double dt_sec;
+    // time after which the diffusion term is negligible so the temp comes from source only
+    double t_threshold;
 };
 
 /**
@@ -70,27 +63,17 @@ class battery_losses
 {
 public:
 
-    battery_losses(const battery_losses_params& p);
+    battery_losses(const std::shared_ptr<const battery_losses_params>& p);
 
-    /// Copy input losses to this object
-    battery_losses(const battery_losses&);
-
-    /// Run the losses model at the present simulation index (for year 1 only)
-    void run_losses(const storage_time_state &time, const capacity_state &cap);
-
-    battery_losses_params get_params() const {return params;}
+    std::shared_ptr<const battery_losses_params> get_params() const {return params;}
 
     /// Get the loss at the specified simulation index (year 1)
-    double getLoss(size_t indexFirstYear);
-
-    std::vector<double> get_loss_ts() const { return loss_ts; }
-    void set_loss_ts(const std::vector<double> l) {loss_ts = l;}
+    double getLoss(const storage_time_state &time, const size_t &charge_mode);
 
 protected:
 
-    const battery_losses_params params;
+    const std::shared_ptr<const battery_losses_params> params;
 
-    std::vector<double> loss_ts;
 };
 
 /*
@@ -102,8 +85,7 @@ struct battery_state{
     double batt_voltage;
     lifetime_state lifetime;
     thermal_state thermal;
-    std::vector<double> loss_ts_ptr;
-
+//    double loss;
     size_t last_idx;
 };
 
@@ -125,28 +107,20 @@ public:
     void set_state(const battery_state& state);
     battery_state get_state();
 
-    battery_capacity_interface * capacity_model() const;
-    battery_voltage_interface * voltage_model() const;
-    battery_lifetime * lifetime_model() const;
-    battery_thermal * thermal_model() const;
-    battery_losses * losses_model() const;
-
     // Get capacity quantities
+    double get_I(){return capacity->get_I();}
+    double get_V(){return voltage->get_battery_voltage();}
+    double get_SOC();
     double get_battery_charge_needed(double SOC_max);
     double battery_charge_maximum();
     double battery_charge_maximum_thermal();
     double get_battery_energy_nominal();
     double get_battery_energy_to_fill(double SOC_max);
     double get_battery_power_to_fill(double SOC_max);
-    double battery_soc();
 
-    // Get Voltage
-    double battery_voltage(); // the actual battery voltage
     double battery_voltage_nominal(); // the nominal battery voltage
 
 private:
-
-    battery_state state;
 
     const battery_properties_params& params;
 
@@ -163,7 +137,7 @@ private:
     void run_lifetime_model(const storage_time_state &time);
     void run_losses_model(const storage_time_state &time);
 
-
+    double last_idx;
 
 };
 

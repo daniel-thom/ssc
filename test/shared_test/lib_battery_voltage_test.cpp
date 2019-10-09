@@ -24,8 +24,8 @@ TEST_F(voltage_dynamic_lib_battery_voltage_test, NickelMetalHydrideFromPaperTest
     auto cap_params_Ni = std::shared_ptr<battery_capacity_params>(new battery_capacity_params({cap_params->time, 6.5, 100, 0, 100}));
     cap = std::unique_ptr<capacity_lithium_ion>(new capacity_lithium_ion(cap_params_Ni));
 
-    auto vol_params_Ni = battery_voltage_params({1, 1, 1.2, 0.0046, battery_voltage_params::MODEL,
-                                                 1.4, 1.25, 1.2, 6.5, 1.3, 5.2, 0.2});
+    auto vol_params_Ni = std::shared_ptr<battery_voltage_params>(new battery_voltage_params({1, 1, 1.2, 0.0046, battery_voltage_params::MODEL,
+                                                 1.4, 1.25, 1.2, 6.5, 1.3, 5.2, 0.2}));
     model = std::unique_ptr<battery_voltage_interface>(new voltage_dynamic(vol_params_Ni));
 
     // testing with 1lt curve

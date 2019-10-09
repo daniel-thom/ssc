@@ -117,7 +117,7 @@ void battery_powerflow::apply_dispatch(const storage_time_state& s, double &targ
         battery_model->run(s, I);
 
         // Update how much power was actually used to/from battery
-        double battery_voltage_new = battery_model->battery_voltage();
+        double battery_voltage_new = battery_model->get_V();
         target_power = I * battery_voltage_new * util::watt_to_kilowatt;
 
         // Update power flow calculations, calculate AC power, and check the constraints
@@ -130,7 +130,7 @@ void battery_powerflow::apply_dispatch(const storage_time_state& s, double &targ
         }
 
         // Recalculate the DC battery power
-        target_power = I * battery_model->battery_voltage() * util::watt_to_kilowatt;
+        target_power = I * battery_model->get_V() * util::watt_to_kilowatt;
         count++;
 
     } while (iterate);

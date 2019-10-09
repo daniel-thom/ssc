@@ -50,6 +50,8 @@ public:
     virtual double get_q1() = 0; // available charge
     virtual double get_q10() = 0; // capacity at 10 hour discharge rate
     virtual double get_SOC() = 0;
+    virtual size_t get_charge_mode() = 0;
+    virtual double get_I() = 0;
 
     virtual capacity_state get_state() = 0;
     virtual void set_state(const capacity_state &state) = 0;
@@ -76,7 +78,7 @@ class capacity_kibam : public battery_capacity_interface
 public:
 
     // Public APIs
-    capacity_kibam(const std::shared_ptr<const battery_capacity_params> p);
+    capacity_kibam(const std::shared_ptr<const battery_capacity_params>& p);
     ~capacity_kibam(){}
 
     // copy from capacity to this
@@ -92,7 +94,8 @@ public:
     double get_q2(); // Bound charge
     double get_q10() override; // Capacity at 10 hour discharge rate
     double get_SOC() override {return state.SOC;}
-
+    size_t get_charge_mode() override {return state.charge_mode;}
+    double get_I() override {return state.I;};
 
     capacity_state get_state() override { return state; }
     void set_state(const capacity_state& new_state) override { state = new_state; }
@@ -116,6 +119,8 @@ protected:
     double c;  // [0-1] - capacity fraction
     double k;  // [1/hour] - rate constant
 
+    double qmax0; // [Ah] calculated in parameter_compute
+
     // unique to kibam
     double c_compute(double F, double t2, double k_guess);
     double q1_compute(double q10, double q0, double I); // may remove some inputs, use class variables
@@ -132,7 +137,7 @@ Lithium Ion specific capacity model
 class capacity_lithium_ion : public battery_capacity_interface
 {
 public:
-    capacity_lithium_ion(const std::shared_ptr<const battery_capacity_params> p);
+    capacity_lithium_ion(const std::shared_ptr<const battery_capacity_params>& p);
     ~capacity_lithium_ion(){};
 
     // copy from capacity to this
@@ -148,6 +153,8 @@ public:
     double get_q1() override;  // Available charge
     double get_q10() override; // Capacity at 10 hour discharge rate
     double get_SOC() override {return state.SOC;}
+    size_t get_charge_mode() override {return state.charge_mode;};
+    double get_I() override {return state.I;};
 
 
     capacity_state get_state() override { return state; }

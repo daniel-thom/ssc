@@ -318,13 +318,13 @@ lifetime_calendar::lifetime_calendar(){};
 
 lifetime_calendar::lifetime_calendar(const std::shared_ptr<const battery_lifetime_params> &params):
 params_p(params) {
-    if (params_p->calendar_choice == battery_lifetime_params::MODEL)
+    if (params_p->choice == battery_lifetime_params::MODEL)
         state.init(params_p->calendar_q0);
     else
         state.init(1);
 
     dt_day = params_p->time->dt_hour / util::hours_per_day;
-    if (params_p->calendar_choice == battery_lifetime_params::TABLE) {
+    if (params_p->choice == battery_lifetime_params::TABLE) {
         // extract and sort calendar life info from table
         for (size_t i = 0; i != params_p->calendar_matrix.nrows(); i++) {
             table_days.emplace_back((int) params_p->calendar_matrix.at(i, 0));
@@ -342,11 +342,11 @@ params_p(lifetime_calendar.params_p)
     state = lifetime_calendar.state;
 }
 
-double lifetime_calendar::get_calendar_choice() { return params_p->calendar_choice; }
+double lifetime_calendar::get_calendar_choice() { return params_p->choice; }
 
 void lifetime_calendar::runLifetimeCalendarModel(size_t idx, double T, double SOC)
 {
-    if (params_p->calendar_choice != battery_lifetime_params::NONE)
+    if (params_p->choice != battery_lifetime_params::NONE)
     {
         // only run once per iteration (need to make the last iteration)
         if (idx > state.last_idx)
@@ -355,9 +355,9 @@ void lifetime_calendar::runLifetimeCalendarModel(size_t idx, double T, double SO
             if (idx % util::hours_per_day / params_p->time->dt_hour == 0)
                 state.day_age_of_battery++;
 
-            if (params_p->calendar_choice == battery_lifetime_params::MODEL)
+            if (params_p->choice == battery_lifetime_params::MODEL)
                 runLithiumIonModel(T, SOC/100.);
-            else if (params_p->calendar_choice == battery_lifetime_params::TABLE)
+            else if (params_p->choice == battery_lifetime_params::TABLE)
                 runTableModel();
 
             state.last_idx = idx;
@@ -415,7 +415,7 @@ void lifetime_calendar::replaceBattery(double replacement_percent)
 {
     state.day_age_of_battery = 0;
     state.q += replacement_percent;
-    if (params_p->calendar_choice == battery_lifetime_params::MODEL)
+    if (params_p->choice == battery_lifetime_params::MODEL)
         state.q = fmin(params_p->calendar_q0 * 100, state.q);
     state.dq_new = 0;
     state.dq_old = 0;
@@ -428,19 +428,18 @@ Define Lifetime Model
 battery_lifetime::battery_lifetime(const std::shared_ptr<const battery_lifetime_params> &p):
         cycle_model(new lifetime_cycle(p)),
         calendar_model(new lifetime_calendar(p)),
-        params(p)
+        params(p),
+        state({cycle_model->get_state(), calendar_model->get_state(), 100})
 {
-    state.q = 100;
 }
 
 
 battery_lifetime::battery_lifetime(const battery_lifetime& lifetime):
         params(lifetime.params),
         cycle_model(new lifetime_cycle(lifetime.params)),
-        calendar_model(new lifetime_calendar(lifetime.params))
+        calendar_model(new lifetime_calendar(lifetime.params)),
+        state(lifetime.state)
 {
-    set_state(lifetime.get_state());
-    state = lifetime.state;
 }
 
 double battery_lifetime::get_capacity_percent(){ return state.q; }
@@ -459,7 +458,6 @@ void battery_lifetime::runLifetimeModels(const storage_time_state& time, const c
         calendar_model->runLifetimeCalendarModel(time.get_index(), T_battery, cap.SOC * 0.01);
 
         // total capacity is min of cycle (Q_neg) and calendar (Q_li) capacity
-        update_state();
         state.q = fmin(state.cycle.relative_q, state.calendar.q);
     }
     if (state.q < 0)
@@ -506,7 +504,6 @@ void battery_lifetime::replaceBattery(double replacement_percent)
 
     cycle_model->replaceBattery(replacement_percent);
     calendar_model->replaceBattery(replacement_percent);
-    update_state();
 }
 
 

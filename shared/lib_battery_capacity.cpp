@@ -6,6 +6,7 @@
 #include <algorithm>
 
 #include "lib_battery_capacity.h"
+#include "lib_storage_params.h"
 
 void capacity_state::init(double q, double SOC_init){
     q0 = 0.01*SOC_init*q;
@@ -109,11 +110,10 @@ void battery_capacity_interface::update_SOC(capacity_state& state)
 /*
 Define KiBam Capacity Model
 */
-capacity_kibam::capacity_kibam(const std::shared_ptr<const battery_capacity_params> p):
+capacity_kibam::capacity_kibam(const std::shared_ptr<const battery_capacity_params>& p):
 params(p),
 state(capacity_state())
 {
-    state.init(params->qmax, params->initial_SOC);
     state.kibam.q10 = params->lead_acid.q10;
     state.kibam.q20 = params->lead_acid.q20;
     state.kibam.I20 = params->lead_acid.q20/20.;
@@ -128,9 +128,10 @@ state(capacity_state())
 
     // compute the parameters
     parameter_compute();
+    state.init(qmax0, params->initial_SOC);
 
     // initializes to full battery
-    replace_battery(0);
+    replace_battery(100);
 }
 
 capacity_kibam::capacity_kibam(const capacity_kibam& capacity):
@@ -145,14 +146,15 @@ state(capacity.state)
     F2 = capacity.F2;
     c = capacity.c;
     k = capacity.k;
+    qmax0 = capacity.qmax0;
 }
 
 void capacity_kibam::replace_battery(double replacement_percent)
 {
     replacement_percent = fmax(0, replacement_percent);
     double qmax_old = state.qmax;
-    state.qmax += replacement_percent * 0.01* params->qmax;
-    state.qmax = fmin(state.qmax, params->qmax);
+    state.qmax += replacement_percent * 0.01* qmax0;
+    state.qmax = fmin(state.qmax, qmax0);
     state.qmax_thermal = state.qmax;
     state.q0 += (state.qmax-qmax_old)*params->initial_SOC*0.01;
     state.kibam.q1_0 = state.q0 * c;
@@ -225,7 +227,7 @@ void capacity_kibam::parameter_compute()
             c = 0.5 * (c1 + c2);
         }
     }
-    state.qmax = qmax_compute();
+    qmax0 = qmax_compute();
 }
 
 void capacity_kibam::updateCapacity(double &I)
@@ -306,8 +308,8 @@ void capacity_kibam::updateCapacityForLifetime(double capacity_percent)
 {
     if (capacity_percent < 0)
         capacity_percent = 0;
-    if (params->qmax * capacity_percent * 0.01 <= state.qmax)
-        state.qmax = params->qmax * capacity_percent * 0.01;
+    if (qmax0 * capacity_percent * 0.01 <= state.qmax)
+        state.qmax = qmax0 * capacity_percent * 0.01;
 
     // scale to q0 = qmax if q0 > qmax
     if (state.q0 > state.qmax)
@@ -330,7 +332,7 @@ double capacity_kibam::get_q10(){ return state.kibam.q10; }
 /*
 Define Lithium Ion capacity model
 */
-capacity_lithium_ion::capacity_lithium_ion(const std::shared_ptr<const battery_capacity_params> p):
+capacity_lithium_ion::capacity_lithium_ion(const std::shared_ptr<const battery_capacity_params>& p):
 params(p),
 state(capacity_state())
 {
