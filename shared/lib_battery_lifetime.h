@@ -38,6 +38,8 @@ public:
     /// Replace or partially replace a battery
     void replaceBattery(double replacement_percent);
 
+    double get_relative_q(){return state.relative_q;}
+
     cycle_lifetime_state get_state(){return state; };
 
     void set_state(const cycle_lifetime_state& new_state){ state = new_state; }
@@ -104,7 +106,7 @@ public:
     /// Reset or augment the capacity
     void replaceBattery(double replacement_percent);
 
-    double get_calendar_choice();
+    double get_relative_q(){return state.q;}
 
     calendar_lifetime_state get_state() { return state;}
     void set_state(const calendar_lifetime_state& new_state) {state = new_state;}
@@ -148,7 +150,7 @@ public:
     virtual ~battery_lifetime(){};
 
     /// Execute the lifetime models given the current lifetime run index, capacity model, and temperature
-    void runLifetimeModels(const storage_time_state& time, const capacity_state& cap, double T_battery);
+    void runLifetimeModels(const storage_time_state &time, double SOC, bool charge_changed, double T_battery);
 
     /// Check if the battery should be replaced based upon the replacement criteria
     void replaceBattery(double replacement_percent);
@@ -157,13 +159,7 @@ public:
     void reset_replacements();
 
     /// Return the relative capacity percentage of nominal (%)
-    double get_capacity_percent();
-
-    /// Return the relative capacity percentage of nominal caused by cycle damage (%)
-    double get_capacity_percent_cycle();
-
-    /// Return the relative capacity percentage of nominal caused by calendar fade (%)
-    double get_capacity_percent_calendar();
+    double get_capacity_percent() {return relative_q;}
 
     /// Return the number of total replacements in the year
     int get_replacements();
@@ -171,10 +167,12 @@ public:
     void set_state(const lifetime_state& s) {
         cycle_model->set_state(s.cycle);
         calendar_model->set_state(s.calendar);
-        state.q = s.q;
+        relative_q = s.q;
     }
 
-    lifetime_state get_state() {return state;}
+    lifetime_state get_state() {
+        return lifetime_state({cycle_model->get_state(), calendar_model->get_state(), relative_q});
+    }
 
     std::shared_ptr<const battery_lifetime_params> get_params() const {return params;}
 
@@ -182,7 +180,7 @@ protected:
 
     const std::shared_ptr<const battery_lifetime_params> params;
 
-    lifetime_state state;
+    double relative_q;
 
     /// Underlying lifetime cycle model
     std::unique_ptr<lifetime_cycle> cycle_model;

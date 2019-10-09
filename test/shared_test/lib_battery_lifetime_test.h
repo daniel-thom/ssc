@@ -65,11 +65,11 @@ public:
 
 static void compareState(const calendar_lifetime_state& calendar_state, const calendar_lifetime_state& state, const std::string& msg){
     double tol = 0.01;
-//        EXPECT_NEAR(model->, state.day_age_of_battery, tol) << msg;
+    EXPECT_NEAR(calendar_state.day_age_of_battery, state.day_age_of_battery, tol) << msg;
     EXPECT_NEAR(calendar_state.q, state.q, tol) << msg;
-//        EXPECT_NEAR(model->capacity_percent(), state.last_idx, tol) << msg;
-//        EXPECT_NEAR(model->average_range(), state.dq_old, tol) << msg;
-//        EXPECT_NEAR(model->cycle_range(), state.dq_new, tol) << msg;
+    EXPECT_NEAR(calendar_state.last_idx, state.last_idx, tol) << msg;
+    EXPECT_NEAR(calendar_state.dq_old, state.dq_old, tol) << msg;
+    EXPECT_NEAR(calendar_state.dq_new, state.dq_new, tol) << msg;
 }
 
 class lib_battery_lifetime_calendar_matrix_test : public lib_battery_lifetime_test

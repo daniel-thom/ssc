@@ -95,7 +95,7 @@ TEST_F(lib_battery_lifetime_calendar_matrix_test, replaceBatteryTest) {
 
     cal_model->replaceBattery(5);
 
-    s = calendar_lifetime_state({8333,46.51,199999,0,0});
+    s = calendar_lifetime_state({0,46.51,199999,0,0});
     compareState(cal_model->get_state(), s, "replaceBatteryTest: 2");
 }
 
@@ -142,46 +142,44 @@ TEST_F(lib_battery_lifetime_calendar_model_test, replaceBatteryTest) {
 
     model->replaceBattery(5);
 
-    s = calendar_lifetime_state({8333,102,199999,0,0});
+    s = calendar_lifetime_state({0,102,199999,0,0});
     compareState(model->get_state(), s, "runCalendarModelTest: 2");
 }
 
 TEST_F(lib_battery_lifetime_test, ReplaceByCapacityTest){
     storage_time_state time_state(dt_hour);
-    capacity_state cap_state;
+    double SOC = 95;
     // set the charge mode different from previous charge model to trigger runCycleLifetime calculation
-    cap_state.charge_mode = 0;
-    cap_state.prev_charge_mode = 1;
 
     while (time_state.get_index() < 1752){
-        cap_state.DOD = 95;
-        model->runLifetimeModels(time_state, cap_state, 293);
+        SOC = 5;
+        model->runLifetimeModels(time_state, SOC, true, 293);
         time_state.increment();
-        cap_state.DOD = 5;
-        model->runLifetimeModels(time_state, cap_state, 293);
+        SOC = 95;
+        model->runLifetimeModels(time_state, SOC, true, 293);
         time_state.increment();
     }
     auto s = lifetime_state({{82.5, 90, 90, 90, 90, 875, 2, std::vector<double>()},
-                                 {36, 101.92, 875, 0.000632, 0.000632}, 82.5});
+                                 {72, 101.92, 1751, 0.000632, 0.000632}, 82.5});
     compareState(model->get_state(), s, "ReplaceByCapacityTest: 1");
 
     while (time_state.get_index() < 4202){
-        cap_state.DOD = 75;
-        model->runLifetimeModels(time_state, cap_state, 293);
+        SOC = 25;
+        model->runLifetimeModels(time_state, SOC, true, 293);
         time_state.increment();
-        cap_state.DOD = 25;
-        model->runLifetimeModels(time_state, cap_state, 293);
+        SOC = 75;
+        model->runLifetimeModels(time_state, SOC, true, 293);
         time_state.increment();
     }
     s = lifetime_state({{59.998, 50, 70, 50, 66.682, 2099, 4, std::vector<double>()},
-                                 {87, 101.878, 2099, 0.00155, 0.00155}, 60.015});
+                                 {175, 101.878, 4201, 0.00155, 0.00155}, 60.015});
 
     compareState(model->get_state(), s, "ReplaceByCapacityTest: 2");
 
     model->replaceBattery(100);
 
     s = lifetime_state({{100, 0, 0, 0, 66.682, 0, 0, std::vector<double>()},
-                        {0, 102, 0, 0, 0}, 100});
+                        {0, 102, 4201, 0, 0}, 100});
 
     compareState(model->get_state(), s, "ReplaceByCapacityTest: 3");
 

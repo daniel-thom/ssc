@@ -22,9 +22,11 @@ dt_sec(params->time->dt_hour * 3600){
 }
 
 battery_thermal::battery_thermal(const battery_thermal& thermal):
-params(thermal.params)
+params(thermal.params),
+state(thermal.state),
+dt_sec(thermal.dt_sec),
+t_threshold(thermal.t_threshold)
 {
-    state = thermal.state;
 }
 void battery_thermal::replace_battery()
 {
@@ -136,16 +138,12 @@ capacity(battery.capacity),
 voltage(battery.voltage),
 thermal(battery.thermal),
 lifetime(battery.lifetime),
-losses(battery.losses){
+losses(battery.losses),
+last_idx(battery.last_idx){
 }
 
 battery::~battery()
 {
-    delete capacity;
-    delete voltage;
-    delete lifetime;
-    delete thermal;
-    delete losses;
 }
 
 void battery::set_state(const battery_state &s) {
@@ -226,7 +224,7 @@ void battery::run_voltage_model()
 
 void battery::run_lifetime_model(const storage_time_state &time)
 {
-    lifetime->runLifetimeModels(time, capacity->get_state(), thermal->get_T_battery());
+    lifetime->runLifetimeModels(time, capacity->get_SOC(), false, thermal->get_T_battery());
 }
 void battery::run_losses_model(const storage_time_state &time)
 {

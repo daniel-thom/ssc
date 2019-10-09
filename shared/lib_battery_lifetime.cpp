@@ -342,8 +342,6 @@ params_p(lifetime_calendar.params_p)
     state = lifetime_calendar.state;
 }
 
-double lifetime_calendar::get_calendar_choice() { return params_p->choice; }
-
 void lifetime_calendar::runLifetimeCalendarModel(size_t idx, double T, double SOC)
 {
     if (params_p->choice != battery_lifetime_params::NONE)
@@ -429,7 +427,7 @@ battery_lifetime::battery_lifetime(const std::shared_ptr<const battery_lifetime_
         cycle_model(new lifetime_cycle(p)),
         calendar_model(new lifetime_calendar(p)),
         params(p),
-        state({cycle_model->get_state(), calendar_model->get_state(), 100})
+        relative_q(100)
 {
 }
 
@@ -438,34 +436,31 @@ battery_lifetime::battery_lifetime(const battery_lifetime& lifetime):
         params(lifetime.params),
         cycle_model(new lifetime_cycle(lifetime.params)),
         calendar_model(new lifetime_calendar(lifetime.params)),
-        state(lifetime.state)
+        relative_q(lifetime.relative_q)
 {
 }
 
-double battery_lifetime::get_capacity_percent(){ return state.q; }
-double battery_lifetime::get_capacity_percent_cycle() { return cycle_model->get_state().relative_q; }
-double battery_lifetime::get_capacity_percent_calendar() { return calendar_model->get_calendar_choice(); }
-
-void battery_lifetime::runLifetimeModels(const storage_time_state& time, const capacity_state& cap, double T_battery)
+void
+battery_lifetime::runLifetimeModels(const storage_time_state &time, double SOC, bool charge_changed, double T_battery)
 {
-    double q_last = state.q;
+    double q_last = relative_q;
 
-    if (state.q > 0)
+    if (relative_q > 0)
     {
-        if (cap.charge_mode != cap.prev_charge_mode)
-            cycle_model->runCycleLifetime(cap.DOD);
+        if (charge_changed)
+            cycle_model->runCycleLifetime(100. - SOC);
 
-        calendar_model->runLifetimeCalendarModel(time.get_index(), T_battery, cap.SOC * 0.01);
+        calendar_model->runLifetimeCalendarModel(time.get_index(), T_battery, SOC * 0.01);
 
         // total capacity is min of cycle (Q_neg) and calendar (Q_li) capacity
-        state.q = fmin(state.cycle.relative_q, state.calendar.q);
+        relative_q = fmin(cycle_model->get_relative_q(), calendar_model->get_relative_q());
     }
-    if (state.q < 0)
-        state.q = 0;
+    if (relative_q < 0)
+        relative_q = 0;
 
     // capacity cannot increase
-    if (state.q > q_last)
-        state.q = q_last;
+    if (relative_q > q_last)
+        relative_q = q_last;
 }
 
 void battery_lifetime::replaceBattery(double replacement_percent)
@@ -504,6 +499,8 @@ void battery_lifetime::replaceBattery(double replacement_percent)
 
     cycle_model->replaceBattery(replacement_percent);
     calendar_model->replaceBattery(replacement_percent);
+    relative_q = fmin(cycle_model->get_relative_q(), calendar_model->get_relative_q());
+
 }
 
 
