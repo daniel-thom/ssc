@@ -153,10 +153,10 @@ TEST_F(lib_battery_lifetime_test, ReplaceByCapacityTest){
 
     while (time_state.get_index() < 1752){
         SOC = 5;
-        model->runLifetimeModels(time_state, SOC, true, 293);
+        model->runLifetimeModels(time_state.get_lifetime_index(), SOC, true, 293);
         time_state.increment();
         SOC = 95;
-        model->runLifetimeModels(time_state, SOC, true, 293);
+        model->runLifetimeModels(time_state.get_lifetime_index(), SOC, true, 293);
         time_state.increment();
     }
     auto s = lifetime_state({{82.5, 90, 90, 90, 90, 875, 2, std::vector<double>()},
@@ -165,10 +165,10 @@ TEST_F(lib_battery_lifetime_test, ReplaceByCapacityTest){
 
     while (time_state.get_index() < 4202){
         SOC = 25;
-        model->runLifetimeModels(time_state, SOC, true, 293);
+        model->runLifetimeModels(time_state.get_lifetime_index(), SOC, true, 293);
         time_state.increment();
         SOC = 75;
-        model->runLifetimeModels(time_state, SOC, true, 293);
+        model->runLifetimeModels(time_state.get_lifetime_index(), SOC, true, 293);
         time_state.increment();
     }
     s = lifetime_state({{59.998, 50, 70, 50, 66.682, 2099, 4, std::vector<double>()},

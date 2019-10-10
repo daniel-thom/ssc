@@ -354,7 +354,7 @@ void lifetime_calendar::runLifetimeCalendarModel(size_t idx, double T, double SO
                 state.day_age_of_battery++;
 
             if (params_p->choice == battery_lifetime_params::MODEL)
-                runLithiumIonModel(T, SOC/100.);
+                runLithiumIonModel(T, SOC);
             else if (params_p->choice == battery_lifetime_params::TABLE)
                 runTableModel();
 
@@ -441,7 +441,7 @@ battery_lifetime::battery_lifetime(const battery_lifetime& lifetime):
 }
 
 void
-battery_lifetime::runLifetimeModels(const storage_time_state &time, double SOC, bool charge_changed, double T_battery)
+battery_lifetime::runLifetimeModels(const size_t &lifetime_index, double SOC, bool charge_changed, double T_battery)
 {
     double q_last = relative_q;
 
@@ -450,7 +450,7 @@ battery_lifetime::runLifetimeModels(const storage_time_state &time, double SOC, 
         if (charge_changed)
             cycle_model->runCycleLifetime(100. - SOC);
 
-        calendar_model->runLifetimeCalendarModel(time.get_index(), T_battery, SOC * 0.01);
+        calendar_model->runLifetimeCalendarModel(lifetime_index, T_battery, SOC * 0.01);
 
         // total capacity is min of cycle (Q_neg) and calendar (Q_li) capacity
         relative_q = fmin(cycle_model->get_relative_q(), calendar_model->get_relative_q());

@@ -86,7 +86,6 @@ struct battery_state{
     lifetime_state lifetime;
     thermal_state thermal;
 //    double loss;
-    size_t last_idx;
 };
 
 class battery
@@ -99,7 +98,7 @@ public:
     ~battery();
 
     // Run all for single time step
-    void run(const storage_time_state& time, double& I);
+    void run(const storage_time_state& time, double I_guess);
 
     // Compute how battery system to modification of a single state variable
     void change_power(const double P);
@@ -134,10 +133,8 @@ private:
     void run_capacity_model(double &I);
     void run_voltage_model();
     void run_thermal_model(double I, const storage_time_state &time);
-    void run_lifetime_model(const storage_time_state &time);
+    void run_lifetime_model(const size_t &lifetime_index);
     void run_losses_model(const storage_time_state &time);
-
-    double last_idx;
 
 };
 

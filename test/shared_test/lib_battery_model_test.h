@@ -116,7 +116,6 @@ static void compareState(const battery_state& batt_state, const battery_state& s
     EXPECT_NEAR(batt_state.batt_voltage, state.batt_voltage, 0.01);
     compareState(batt_state.lifetime, state.lifetime, msg);
     compareState(batt_state.thermal, state.thermal, msg);
-    EXPECT_EQ(batt_state.last_idx, state.last_idx);
 }
 
 // entire suite of tests runs in 177ms - 10/7
@@ -146,6 +145,10 @@ public:
     // lifetime
     util::matrix_t<double> cycleLifeMatrix;
     util::matrix_t<double> calendarLifeMatrix;
+    double calendar_q0 = 1.02;
+    double calendar_a = 2.66e-3;
+    double calendar_b = -7280;
+    double calendar_c = 930;
 
     // thermal
     double mass = 507;
@@ -168,6 +171,7 @@ public:
     double tol = 0.01;
 
     std::unique_ptr<battery> batteryModel;
+    std::unique_ptr<battery_t> model;
 
     battery_properties_params params;
     std::shared_ptr<storage_time_params> time;
@@ -177,8 +181,6 @@ public:
         // lifetime
         double vals[] = { 20, 0, 100, 20, 5000, 80, 20, 10000, 60, 80, 0, 100, 80, 1000, 80, 80, 2000, 60 };
         cycleLifeMatrix.assign(vals, 6, 3);
-        double vals2[] = { 0, 100, 3650, 80, 7300, 50 };
-        calendarLifeMatrix.assign(vals, 3, 2);
 
         T_room.emplace_back(293.15);
         double vals3[] = { 263.15, 60, 273.15, 80, 298.15, 100, 318.15, 100 };
@@ -200,10 +202,10 @@ public:
         auto cap_params = std::shared_ptr<const battery_capacity_params>(new battery_capacity_params(
                 {time, q, SOC_init, SOC_min, SOC_max}));
         auto vol_params = std::shared_ptr<battery_voltage_params>(new battery_voltage_params(
-                {n_series, n_strings, Vnom_default, resistance, battery_voltage_params::TABLE,
+                {n_series, n_strings, Vnom_default, resistance, battery_voltage_params::MODEL,
                                                   Vfull, Vexp, Vnom, Qfull, Qexp, Qnom, C_rate}));
         auto life_params = std::shared_ptr<const battery_lifetime_params>(new battery_lifetime_params(
-                {time, cycleLifeMatrix,battery_lifetime_params::TABLE, 0,0,0,0,calendarLifeMatrix}));
+                {time, cycleLifeMatrix,battery_lifetime_params::MODEL, calendar_q0,calendar_a,calendar_b,calendar_c}));
 
         auto temp_params = std::shared_ptr<const battery_thermal_params>(new battery_thermal_params(
                 {time, mass, surface_area, resistance, Cp, capacityVsTemperature, h, T_room}));
@@ -218,6 +220,18 @@ public:
                                             life_params,
                                             loss_params});
         batteryModel = std::unique_ptr<battery>(new battery(params));
+
+        auto capacityModel = new capacity_lithium_ion_t(q, SOC_init, SOC_max, SOC_min);
+        auto voltageModel = new voltage_dynamic_t(n_series, n_strings, Vnom_default, Vfull, Vexp, Vnom, Qfull, Qexp, Qnom, C_rate, resistance);
+        auto cycleModel = new lifetime_cycle_t(cycleLifeMatrix);
+        auto calendarModel = new lifetime_calendar_t(1, calendarLifeMatrix, dt_hour, calendar_q0, calendar_a, calendar_b, calendar_c);
+        auto lifetimeModel = new lifetime_t(cycleModel, calendarModel, 0, 0);
+        auto thermalModel = new thermal_t(1.0, mass, 0.58, 0.58, 0.58, resistance, Cp, h, T_room,
+                                     capacityVsTemperature);
+        auto lossModel = new losses_t(dt_hour, lossChoice, monthlyLosses, monthlyLosses, monthlyLosses, fullLosses);
+        model = std::unique_ptr<battery_t>(new battery_t(dt_hour, 1));
+        model->initialize(capacityModel, voltageModel, lifetimeModel, thermalModel, lossModel);
+
     }
 
 };

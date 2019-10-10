@@ -1206,7 +1206,7 @@ double lifetime_cycle_t::bilinear(double DOD, int cycle_number)
 Lifetime Calendar Model
 */
 lifetime_calendar_t::lifetime_calendar_t(int calendar_choice, util::matrix_t<double> calendar_matrix, double dt_hour,
-	float q0, float a, float b, float c) 
+                                         double q0, double a, double b, double c)
 {
 	_calendar_choice = calendar_choice;
 	
@@ -1365,13 +1365,6 @@ thermal_t::thermal_t(double dt_hour, double mass, double length, double width, d
 
     // exp(-A*h*t/m/Cp) < tol
     t_threshold = -_mass * _Cp / _A / _h * log(tolerance) + dt_sec;
-
-    // curve fit
-	size_t n = _cap_vs_temp.nrows();
-	for (int i = 0; i < (int)n; i++)
-	{
-		_cap_vs_temp(i,0) += 273.15; // convert C to K
-	}
 }
 
 thermal_t::thermal_t(const thermal_t& thermal){

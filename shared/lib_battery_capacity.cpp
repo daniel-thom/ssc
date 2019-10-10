@@ -41,10 +41,12 @@ void battery_capacity_interface::compute_charge_modes(capacity_state& state)
         state.charge_mode = capacity_state::DISCHARGE;
 
     // Check if charge changed
+    state.charge_changed = false;
     if ((state.charge_mode != state.prev_charge_mode) && (state.charge_mode != capacity_state::NO_CHARGE)
         && (state.prev_charge_mode != capacity_state::NO_CHARGE))
     {
         state.prev_charge_mode = state.charge_mode;
+        state.charge_changed = true;
     }
 }
 
@@ -57,6 +59,10 @@ void battery_capacity_interface::apply_SOC_limits(capacity_state &state, const s
     // set capacity to upper thermal limit
     if (q_upper > state.qmax_thermal * params->maximum_SOC * 0.01)
         q_upper = state.qmax_thermal * params->maximum_SOC * 0.01;
+    // do this so battery can cycle full depth and we calculate correct SOC min
+    if (q_lower > state.qmax_thermal * params->minimum_SOC * 0.01) {
+        q_lower = state.qmax_thermal * params->minimum_SOC * 0.01;
+    }
 
     // check if overcharged
     if (state.q0 > q_upper )

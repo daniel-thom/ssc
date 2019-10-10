@@ -16,6 +16,7 @@ struct capacity_state{
     double DOD_prev; // [%] - Depth of Discharge of previous step
     int charge_mode; // {CHARGE, NO_CHARGE, DISCHARGE}
     int prev_charge_mode; // {CHARGE, NO_CHARGE, DISCHARGE}
+    bool charge_changed;
 
     struct {
         double q1_0; // [Ah] - charge available
@@ -52,6 +53,7 @@ public:
     virtual double get_SOC() = 0;
     virtual size_t get_charge_mode() = 0;
     virtual double get_I() = 0;
+    virtual bool get_charge_changed() = 0;
 
     virtual capacity_state get_state() = 0;
     virtual void set_state(const capacity_state &state) = 0;
@@ -96,6 +98,8 @@ public:
     double get_SOC() override {return state.SOC;}
     size_t get_charge_mode() override {return state.charge_mode;}
     double get_I() override {return state.I;};
+    bool get_charge_changed() override {return state.charge_changed;};
+
 
     capacity_state get_state() override { return state; }
     void set_state(const capacity_state& new_state) override { state = new_state; }
@@ -155,7 +159,7 @@ public:
     double get_SOC() override {return state.SOC;}
     size_t get_charge_mode() override {return state.charge_mode;};
     double get_I() override {return state.I;};
-
+    bool get_charge_changed() override {return state.charge_changed;};
 
     capacity_state get_state() override { return state; }
     void set_state(const capacity_state& new_state) override { state = new_state; }

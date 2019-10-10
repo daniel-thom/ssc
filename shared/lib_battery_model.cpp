@@ -86,7 +86,7 @@ params(p){
 
 double battery_losses::getLoss(const storage_time_state &time, const size_t &charge_mode) {
 
-    size_t monthIndex = util::month_of((double)(time.get_hour())) - 1;
+    size_t monthIndex = util::month_of((double)(time.get_hour_year())) - 1;
 
     // update system losses depending on user input
     if (params->mode == battery_losses_params::MONTHLY) {
@@ -118,7 +118,7 @@ params(p)
         capacity = new capacity_kibam(p.capacity);
     }
 
-    if (p.voltage->choice == 0){
+    if (p.voltage->choice == battery_voltage_params::MODEL){
         if (p.chem == battery_properties_params::VANADIUM_REDOX){
             voltage = new voltage_vanadium_redox(p.voltage);
         }
@@ -129,7 +129,6 @@ params(p)
     else{
         voltage = new voltage_table(p.voltage);
     }
-    last_idx = 0;
 }
 
 battery::battery(const battery& battery):
@@ -138,8 +137,7 @@ capacity(battery.capacity),
 voltage(battery.voltage),
 thermal(battery.thermal),
 lifetime(battery.lifetime),
-losses(battery.losses),
-last_idx(battery.last_idx){
+losses(battery.losses){
 }
 
 battery::~battery()
@@ -151,7 +149,6 @@ void battery::set_state(const battery_state &s) {
     voltage->set_batt_voltage(s.batt_voltage);
     lifetime->set_state(s.lifetime);
     thermal->set_state(s.thermal);
-    last_idx = s.last_idx;
 }
 
 battery_state battery::get_state(){
@@ -160,28 +157,27 @@ battery_state battery::get_state(){
     s.batt_voltage = voltage->get_battery_voltage();
     s.lifetime = lifetime->get_state();
     s.thermal = thermal->get_state();
-    s.last_idx = last_idx;
     return s;
 }
 
-void battery::run(const storage_time_state& time, double& I)
+void battery::run(const storage_time_state& time, double I_guess)
 {
     // Temperature affects capacity, but capacity model can reduce current, which reduces temperature, need to iterate
-    double I_initial = I;
+    double I_initial = I_guess;
     size_t iterate_count = 0;
     auto capacity_initial = capacity->get_state();
     auto thermal_initial = thermal->get_state();
 
     while (iterate_count < 5)
     {
-        run_thermal_model(I, time);
-        run_capacity_model(I);
+        run_thermal_model(I_guess, time);
+        run_capacity_model(I_guess);
 
-        if (fabs(I - I_initial)/fabs(I_initial) > tolerance)
+        if (fabs(I_guess - I_initial) / fabs(I_initial) > tolerance)
         {
             thermal->set_state(thermal_initial);
             capacity->set_state(capacity_initial);
-            I_initial = I;
+            I_initial = I_guess;
             iterate_count++;
         }
         else {
@@ -190,10 +186,9 @@ void battery::run(const storage_time_state& time, double& I)
 
     }
     run_voltage_model();
-    run_lifetime_model(time);
+    run_lifetime_model(time.get_lifetime_index());
     capacity->updateCapacityForLifetime(lifetime->get_capacity_percent());
     run_losses_model(time);
-    I = capacity->get_state().I;
 }
 
 void battery::change_power(const double P){
@@ -219,20 +214,17 @@ void battery::run_capacity_model(double &I)
 
 void battery::run_voltage_model()
 {
-    voltage->updateVoltage(capacity->get_state(), thermal->get_state().T_batt_avg);
+    voltage->updateVoltage(capacity->get_state(), thermal->get_T_battery());
 }
 
-void battery::run_lifetime_model(const storage_time_state &time)
+void battery::run_lifetime_model(const size_t &lifetime_index)
 {
-    lifetime->runLifetimeModels(time, capacity->get_SOC(), false, thermal->get_T_battery());
+    lifetime->runLifetimeModels(lifetime_index, capacity->get_SOC(), capacity->get_charge_changed(),
+                                thermal->get_T_battery());
 }
 void battery::run_losses_model(const storage_time_state &time)
 {
-    if (time.get_index() > last_idx || time.get_index() == 0)
-    {
-        losses->getLoss(time.get_hour(), capacity->get_charge_mode());
-        last_idx = time.get_index();
-    }
+    losses->getLoss(time, capacity->get_charge_mode());
     // what will be done with these losses?
 }
 

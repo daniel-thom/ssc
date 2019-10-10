@@ -47,7 +47,7 @@ void storage_time_params::initialize_from_data(var_table &vt) {
 }
 
 storage_time_state::storage_time_state(size_t step_hr){
-    year = hour_year1 = index = lifetime_index = 0;
+    year = index = lifetime_index = 0;
     steps_per_hour = step_hr;
     steps_per_year = 8760 * steps_per_hour;
 }
@@ -59,11 +59,6 @@ storage_time_state storage_time_state::increment(size_t steps){
         year += index / steps_per_year;
         index %= steps_per_year;
     }
-    if (steps == 1 && steps_per_hour == 1)
-        hour_year1++;
-    else{
-        hour_year1 = index / steps_per_hour;
-    }
     return *this;
 }
 
@@ -71,7 +66,6 @@ storage_time_state storage_time_state::reset_storage_time(size_t lifetime_idx) {
     lifetime_index = lifetime_idx;
     index = lifetime_index % steps_per_year;
     year = lifetime_index/steps_per_year;
-    hour_year1 = index / steps_per_hour;
     return *this;
 }
 

@@ -432,8 +432,8 @@ Lifetime calendar model
 class lifetime_calendar_t 
 {
 public:
-	lifetime_calendar_t(int calendar_choice, util::matrix_t<double> calendar_matrix, double dt_hour, 
-		float q0=1.02, float a=2.66e-3, float b=-7280, float c=930);
+	lifetime_calendar_t(int calendar_choice, util::matrix_t<double> calendar_matrix, double dt_hour,
+                        double q0=1.02, double a=2.66e-3, double b=-7280, double c=930);
 	virtual ~lifetime_calendar_t(){/* Nothing to do */};
 
 	// deep copy
@@ -478,10 +478,10 @@ private:
 	double _dq_new;
 
 	// K. Smith: Life Prediction model coeffiecients
-	float _q0; // unitless
-	float _a;  // 1/sqrt(day)
-	float _b;  // K
-	float _c;  // K
+	double _q0; // unitless
+    double _a;  // 1/sqrt(day)
+    double _b;  // K
+    double _c;  // K
 };
 
 /*

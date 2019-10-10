@@ -63,7 +63,6 @@ class storage_time_state
 private:
     /* Changing time values */
     size_t year;
-    size_t hour_year1;
     size_t steps_per_hour;
     size_t steps_per_year;
     size_t index;                                   // lifetime_index (0 - nyears * steps_per_hour * 8760)
@@ -73,7 +72,8 @@ public:
     storage_time_state(size_t step_hr);
 
     size_t get_year() const {return year;}
-    size_t get_hour() const {return hour_year1;}
+    size_t get_hour_year() const {return index / steps_per_hour;}
+    size_t get_hour_lifetime() const {return lifetime_index / steps_per_hour;}
     size_t get_step() const {return steps_per_hour;}
     size_t get_index() const {return index;}
     size_t get_lifetime_index() const {return lifetime_index;}
