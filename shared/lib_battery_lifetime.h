@@ -156,7 +156,6 @@ public:
     /// Execute the lifetime models given the current lifetime run index, capacity model, and temperature
     void runLifetimeModels(const size_t &lifetime_index, double SOC, bool charge_changed, double T_battery);
 
-    /// Check if the battery should be replaced based upon the replacement criteria
     void replaceBattery(double replacement_percent);
 
     /// Reset the number of replacements at the year end

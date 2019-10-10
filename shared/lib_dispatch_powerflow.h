@@ -75,7 +75,7 @@ class battery_powerflow
 {
 public:
     /// Create a BatteryPowerFlow object
-    battery_powerflow(battery_power_params p, const battery_properties_params &b, SharedInverter* s = nullptr);
+    battery_powerflow(battery_power_params p, const std::shared_ptr<battery_properties_params> &b, SharedInverter* s = nullptr);
 
     /// Perform a deep copy of a BatteryFlow object
     battery_powerflow(const battery_powerflow& flow);

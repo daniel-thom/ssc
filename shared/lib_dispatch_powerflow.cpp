@@ -67,7 +67,7 @@ void dispatch_powerflow_state::reset()
     voltageSystem = 0;
 }
 
-battery_powerflow::battery_powerflow(battery_power_params p, const battery_properties_params &b, SharedInverter* s) :
+battery_powerflow::battery_powerflow(battery_power_params p, const std::shared_ptr<battery_properties_params> &b, SharedInverter* s) :
 params(std::move(p)),
 battery_model(new battery(b)),
 shared_inverter(s){

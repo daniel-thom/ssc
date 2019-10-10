@@ -3,17 +3,17 @@
 #include "lib_storage_params.h"
 
 void storage_replacement_params::initialize_from_data(var_table &vt, bool batt_not_fuelcell) {
-    replacement_option = vt.as_integer("batt_replacement_option");
+    option = static_cast<REP>(vt.as_integer("batt_replacement_option"));
 
-    if (replacement_option == 0)
+    if (option == NONE)
         return;
 
     if (batt_not_fuelcell && vt.is_assigned("om_replacement_cost1")){
         cost_per_kwh = vt.as_vector_double("om_replacement_cost1")[0];
-        if (replacement_option == storage_params::REPLACEMENT::CAPACITY){
+        if (option == CAPACITY){
             replacement_capacity = vt.as_double("batt_replacement_capacity");
         }
-        else if (replacement_option == storage_params::REPLACEMENT::SCHEDULE){
+        else if (option == SCHEDULE){
             replacement_per_yr_schedule = vt.as_vector_integer("batt_replacement_schedule");
             replacement_percent_per_yr_schedule = vt.as_vector_double("batt_replacement_schedule_percent");
         }
@@ -21,10 +21,10 @@ void storage_replacement_params::initialize_from_data(var_table &vt, bool batt_n
     }
     if (!batt_not_fuelcell && vt.is_assigned("fuelcell_per_kWh")){
         cost_per_kwh = vt.as_number("fuelcell_per_kWh");
-        if (replacement_option == storage_params::REPLACEMENT::CAPACITY){
+        if (option == CAPACITY){
             replacement_capacity = vt.as_double("fuelcell_replacement_percent");
         }
-        else if (replacement_option == storage_params::REPLACEMENT::SCHEDULE){
+        else if (option == SCHEDULE){
             replacement_per_yr = vt.as_vector_integer("fuelcell_replacement");
             replacement_per_yr_schedule = vt.as_vector_integer("fuelcell_replacement_schedule");
             replacement_percent_per_yr_schedule = vt.as_vector_double("batt_replacement_schedule_percent");
@@ -46,10 +46,15 @@ void storage_time_params::initialize_from_data(var_table &vt) {
         nyears = 1;
 }
 
-storage_time_state::storage_time_state(size_t step_hr){
-    year = index = lifetime_index = 0;
-    steps_per_hour = step_hr;
-    steps_per_year = 8760 * steps_per_hour;
+storage_time_state::storage_time_state(size_t step_hr):
+steps_per_hour(step_hr),
+steps_per_year(8760 * steps_per_hour){
+    year = 0;
+    index = lifetime_index = -1;
+}
+
+storage_time_state storage_time_state::start(){
+    index = lifetime_index = 0;
 }
 
 storage_time_state storage_time_state::increment(size_t steps){

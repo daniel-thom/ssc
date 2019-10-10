@@ -9,10 +9,6 @@
 const double low_tolerance = 0.01;
 const double tolerance = 0.001;
 
-namespace storage_params{
-    enum REPLACEMENT { NONE, CAPACITY, SCHEDULE };
-}
-
 struct storage_config_params
 {
     bool is_batt;
@@ -23,13 +19,12 @@ struct storage_config_params
 
 struct storage_replacement_params
 {
-    /* Replacement options */
-    int replacement_option;                         // 0=none,1=capacity based,2=user schedule
+    enum REP {NONE,CAPACITY,SCHEDULE} option;
     double replacement_capacity;                    // kWh
-    double cost_per_kwh;                            // $/kWh
-    std::vector<int> replacement_per_yr;            // number/year
     std::vector<int> replacement_per_yr_schedule;   // number/year
+    std::vector<int> replacement_per_yr;            // number/year
     std::vector<double> replacement_percent_per_yr_schedule; // %
+    double cost_per_kwh;                            // $/kWh
 
     void initialize_from_data(var_table &vt, bool batt_not_fuelcell);
 };
@@ -63,20 +58,23 @@ class storage_time_state
 private:
     /* Changing time values */
     size_t year;
-    size_t steps_per_hour;
-    size_t steps_per_year;
     size_t index;                                   // lifetime_index (0 - nyears * steps_per_hour * 8760)
     size_t lifetime_index;                              // index for one year (0- steps_per_hour * 8760)
 
 public:
+    const size_t steps_per_hour;
+    const size_t steps_per_year;
+
+    // initialized to -1, use increment() in all usages
     storage_time_state(size_t step_hr);
 
     size_t get_year() const {return year;}
     size_t get_hour_year() const {return index / steps_per_hour;}
     size_t get_hour_lifetime() const {return lifetime_index / steps_per_hour;}
-    size_t get_step() const {return steps_per_hour;}
     size_t get_index() const {return index;}
     size_t get_lifetime_index() const {return lifetime_index;}
+
+    storage_time_state start();
 
     storage_time_state increment(size_t steps = 1);
 

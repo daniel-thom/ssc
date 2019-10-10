@@ -105,34 +105,36 @@ double battery_losses::getLoss(const storage_time_state &time, const size_t &cha
 /*
 Define Battery
 */
-battery::battery(const battery_properties_params& p):
-lifetime(new battery_lifetime(p.lifetime)),
-thermal(new battery_thermal(p.thermal)),
-losses(new battery_losses(p.losses)),
-params(p)
+battery::battery(const std::shared_ptr<const battery_properties_params>& p):
+lifetime(new battery_lifetime(p->lifetime)),
+thermal(new battery_thermal(p->thermal)),
+losses(new battery_losses(p->losses)),
+params(p),
+replacement_params(nullptr)
 {
-    if (p.chem != battery_properties_params::LEAD_ACID) {
-        capacity = new capacity_lithium_ion(p.capacity);
+    if (p->chem != battery_properties_params::LEAD_ACID) {
+        capacity = new capacity_lithium_ion(p->capacity);
     }
     else {
-        capacity = new capacity_kibam(p.capacity);
+        capacity = new capacity_kibam(p->capacity);
     }
 
-    if (p.voltage->choice == battery_voltage_params::MODEL){
-        if (p.chem == battery_properties_params::VANADIUM_REDOX){
-            voltage = new voltage_vanadium_redox(p.voltage);
+    if (p->voltage->choice == battery_voltage_params::MODEL){
+        if (p->chem == battery_properties_params::VANADIUM_REDOX){
+            voltage = new voltage_vanadium_redox(p->voltage);
         }
-        else if (p.chem == battery_properties_params::LEAD_ACID || p.chem == battery_properties_params::LITHIUM_ION){
-            voltage = new voltage_dynamic(p.voltage);
+        else if (p->chem == battery_properties_params::LEAD_ACID || p->chem == battery_properties_params::LITHIUM_ION){
+            voltage = new voltage_dynamic(p->voltage);
         }
     }
     else{
-        voltage = new voltage_table(p.voltage);
+        voltage = new voltage_table(p->voltage);
     }
 }
 
 battery::battery(const battery& battery):
 params(battery.params),
+replacement_params(battery.replacement_params),
 capacity(battery.capacity),
 voltage(battery.voltage),
 thermal(battery.thermal),
@@ -149,6 +151,7 @@ void battery::set_state(const battery_state &s) {
     voltage->set_batt_voltage(s.batt_voltage);
     lifetime->set_state(s.lifetime);
     thermal->set_state(s.thermal);
+    replacements = s.replacements;
 }
 
 battery_state battery::get_state(){
@@ -157,6 +160,7 @@ battery_state battery::get_state(){
     s.batt_voltage = voltage->get_battery_voltage();
     s.lifetime = lifetime->get_state();
     s.thermal = thermal->get_state();
+    s.replacements = replacements;
     return s;
 }
 
@@ -189,6 +193,8 @@ void battery::run(const storage_time_state& time, double I_guess)
     run_lifetime_model(time.get_lifetime_index());
     capacity->updateCapacityForLifetime(lifetime->get_capacity_percent());
     run_losses_model(time);
+    if (replacement_params)
+        run_replacement(time);
 }
 
 void battery::change_power(const double P){
@@ -228,6 +234,48 @@ void battery::run_losses_model(const storage_time_state &time)
     // what will be done with these losses?
 }
 
+void battery::run_replacement(const storage_time_state& time){
+    bool replace = false;
+    if (time.get_year() < replacement_params->replacement_per_yr_schedule.size())
+    {
+        auto num_repl = (size_t)replacement_params->replacement_per_yr_schedule[time.get_year()];
+        for (size_t j_repl = 0; j_repl < num_repl; j_repl++)
+        {
+            if ((time.get_hour_year() == (j_repl * 8760 / num_repl)) && time.get_index() == 0)
+            {
+                replace = true;
+                break;
+            }
+        }
+    }
+    bool replaced = false;
+    double q = lifetime->get_capacity_percent();
+    double replacement_percent = 0;
+    if ((replacement_params->option == storage_replacement_params::CAPACITY
+        && (q - tolerance) <= replacement_params->replacement_capacity) || replace)
+    {
+        replacements++;
+
+        replacement_percent = replacement_params->replacement_percent_per_yr_schedule[time.get_year()];
+        q += replacement_percent;
+
+        // for now, only allow augmenting up to original installed capacity
+        q = fmin(100., q);
+
+        replaced = true;
+
+        lifetime->replaceBattery(replacement_percent);
+
+        assert(lifetime->get_capacity_percent() == q);
+    }
+
+    if (replaced)
+    {
+        capacity->replace_battery(replacement_percent);
+        thermal->replace_battery();
+    }
+}
+
 double battery::get_battery_charge_needed(double SOC_max)
 {
     double charge_needed = capacity->get_state().qmax_thermal * SOC_max * 0.01 - capacity->get_state().q0;
@@ -249,7 +297,7 @@ double battery::get_battery_energy_nominal()
 double battery::get_battery_power_to_fill(double SOC_max)
 {
     // in one time step
-    return (this->get_battery_energy_to_fill(SOC_max) / params.capacity->time->dt_hour);
+    return (this->get_battery_energy_to_fill(SOC_max) / params->capacity->time->dt_hour);
 }
 
 double battery::battery_charge_maximum(){ return capacity->get_state().qmax; }

@@ -170,9 +170,9 @@ public:
     // models
     double tol = 0.01;
 
-    std::unique_ptr<battery> batteryModel;
+    std::shared_ptr<battery> batteryModel;
 
-    battery_properties_params params;
+    std::shared_ptr<battery_properties_params> params;
     std::shared_ptr<storage_time_params> time;
 
     void SetUp() override
@@ -212,13 +212,13 @@ public:
         auto loss_params = std::shared_ptr<battery_losses_params>(new battery_losses_params(
                 {time, battery_losses_params::MONTHLY, monthlyLosses, monthlyLosses, monthlyLosses, fullLosses}));
 
-        params = battery_properties_params({battery_properties_params::LITHIUM_ION,
+        params = std::shared_ptr<battery_properties_params>(new battery_properties_params({battery_properties_params::LITHIUM_ION,
                                             cap_params,
                                             vol_params,
                                             temp_params,
                                             life_params,
-                                            loss_params});
-        batteryModel = std::unique_ptr<battery>(new battery(params));
+                                            loss_params}));
+        batteryModel = std::shared_ptr<battery>(new battery(params));
     }
 
 };

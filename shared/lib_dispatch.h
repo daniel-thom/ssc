@@ -62,7 +62,7 @@ Manual dispatch class
 class dispatch_manual_t : public dispatch_interface
 {
 public:
-    dispatch_manual_t(battery_t * Battery,
+    dispatch_manual_t(battery *Battery,
                       double dt_hour,
                       double SOC_min,
                       double SOC_max,

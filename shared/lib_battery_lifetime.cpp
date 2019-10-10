@@ -450,38 +450,6 @@ battery_lifetime::runLifetimeModels(const size_t &lifetime_index, double SOC, bo
 
 void battery_lifetime::replaceBattery(double replacement_percent)
 {
-//    auto& rep = params.replacement;
-//    bool replace = false;
-//    if (time.get_year() < rep.replacement_per_yr_schedule.size())
-//    {
-//        auto num_repl = (size_t)rep.replacement_per_yr_schedule[time.get_year()];
-//        for (size_t j_repl = 0; j_repl < num_repl; j_repl++)
-//        {
-//            if ((time.get_hour() == (j_repl * 8760 / num_repl)) && time.get_step() == 0)
-//            {
-//                replace = true;
-//                break;
-//            }
-//        }
-//    }
-//    bool replaced = false;
-//    if ((rep.replacement_option == 1 && (state.q - tolerance) <= rep.replacement_capacity) || replace)
-//    {
-//        state.replacements++;
-//
-//        double replacement_percent = rep.replacement_percent_per_yr_schedule[time.get_year()];
-//        state.q += replacement_percent;
-//
-//        // for now, only allow augmenting up to original installed capacity
-//        state.q = fmin(100., state.q);
-//
-//        replaced = true;
-//
-//        cycle_model->replaceBattery(replacement_percent);
-//        calendar_model->replaceBattery(replacement_percent);
-//    }
-//    return replaced;
-
     cycle_model->replaceBattery(replacement_percent);
     calendar_model->replaceBattery(replacement_percent);
     relative_q = fmin(cycle_model->get_relative_q(), calendar_model->get_relative_q());

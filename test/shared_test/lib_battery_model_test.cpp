@@ -4,6 +4,8 @@
 
 TEST_F(lib_battery_thermal_test, testTimeIncrement){
     storage_time_state time_state(step_hour);
+    time_state.increment();
+
     while (time_state.get_lifetime_index() < 8759)
         time_state.increment();
     EXPECT_EQ(time_state.get_lifetime_index(), time_state.get_index());
@@ -13,6 +15,7 @@ TEST_F(lib_battery_thermal_test, testTimeIncrement){
     EXPECT_EQ(time_state.get_hour_lifetime(), 8760);
 
     storage_time_state time_state2(2);
+    time_state2.increment();
     while (time_state2.get_lifetime_index() < 17519)
         time_state2.increment();
     EXPECT_EQ(time_state2.get_lifetime_index(), time_state2.get_index());
@@ -33,6 +36,7 @@ TEST_F(lib_battery_thermal_test, updateTemperatureTest) {
     // battery which adjusts quickly to temp
     double I = 50;
     storage_time_state time_state(step_hour);
+    time_state.start();
     model->updateTemperature(I, time_state);
     auto s = thermal_state({93.87, 290.495, 290, 290, 3600 * 2});
     compareState(model->get_state(), s, "updateTemperatureTest: 1");
@@ -73,6 +77,8 @@ TEST_F(lib_battery_thermal_test, updateTemperatureTest2){
     // slower adjusting batt
     double I = 50;
     storage_time_state time_state(step_hour);
+    time_state.start();
+
     model->updateTemperature(I, time_state);
     auto s = thermal_state({93.87, 290.495, 290, 290, 3600 * 2});
     compareState(model->get_state(), s, "updateTemperatureTest: 1");
@@ -117,6 +123,8 @@ TEST_F(lib_battery_losses_test, MonthlyLossesTest){
     int charge_mode = capacity_t::CHARGE;
 
     storage_time_state time_state(1);
+    time_state.start();
+
 
     EXPECT_NEAR(model->getLoss(time_state, charge_mode), 0, tol) << "MonthlyLossesTest: 1";
 
@@ -143,6 +151,7 @@ TEST_F(lib_battery_losses_test, TimeSeriesLossesTest){
     int charge_mode = -1;       // not used
 
     storage_time_state time_state(1);
+    time_state.start();
 
     EXPECT_NEAR(model->getLoss(time_state, charge_mode), 0, tol) << "TimeSeriesLossesTest: 1";
 
@@ -160,6 +169,7 @@ TEST_F(lib_battery_test, runTestCycleAt1C){
     double capacity_passed = 0.;
     double I = Qfull * n_strings;
     storage_time_state time(1);
+    time.start();
     batteryModel->run(time, I);
     capacity_passed += batteryModel->get_I() * batteryModel->get_V() / 1000.;
 
@@ -210,6 +220,7 @@ TEST_F(lib_battery_test, runTestCycleAt1C){
 
 TEST_F(lib_battery_test, runTestCycleAt3C){
     storage_time_state time(1);
+    time.start();
     double capacity_passed = 0.;
     double I = Qfull * n_strings * 3;
     batteryModel->run(time, I);
@@ -260,4 +271,43 @@ TEST_F(lib_battery_test, runTestCycleAt3C){
     EXPECT_NEAR(capacity_passed, 316781, 100) << "runTestCycleAt3C: Current passing through cell";
     double qmax = fmax(s.capacity.qmax, s.capacity.qmax_thermal);
     EXPECT_NEAR(qmax/q, .94, 0.01) << "runTestCycleAt3C: Capacity relative to max capacity";
+}
+
+
+TEST_F(lib_battery_test, AugmentCapacity)
+{
+    std::vector<int> replacement_schedule = { 1, 1, 1 };
+    std::vector<double> augmentation_percent = { 50, 40 , 30 };
+
+    auto p = std::shared_ptr<const storage_replacement_params>(new storage_replacement_params({
+        storage_replacement_params::SCHEDULE, 0., replacement_schedule, std::vector<int>(),
+                augmentation_percent
+    }));
+
+    // Current, limited approach which only augments capacity in models, does not update lifetime degradation
+    // trajectories or consider impacts on voltage and other aspects.
+    batteryModel->set_replacement_params(p);
+
+    // Correct future approach for augmenting batteries, by treating as seperate entities
+    std::vector<std::shared_ptr<battery>> batteries;
+    batteries.push_back(batteryModel);
+    batteries.push_back(std::shared_ptr<battery>(new battery(*batteryModel)));
+    batteries.push_back(std::shared_ptr<battery>(new battery(*batteryModel)));
+    batteries[1]->set_replacement_params(p);
+    batteries[2]->set_replacement_params(p);
+
+    storage_time_state time(1);
+    double I = 100;
+    double mult = 1.0;
+    size_t replaceCount = 0;
+    for (size_t y = 0; y < replacement_schedule.size(); y++) {
+        for (size_t t = 0; t < 8760; t++) {
+            mult = fmod(t, 2) == 0 ? 1 : -1;
+            batteries[replaceCount]->run(time.increment(), mult*I);
+        }
+        if (replacement_schedule[y] == 1) {
+            replaceCount++;
+        }
+    }
+    EXPECT_EQ(batteries[0]->get_n_replacements() + batteries[1]->get_n_replacements() + batteries[2]->get_n_replacements(), 3);
 }

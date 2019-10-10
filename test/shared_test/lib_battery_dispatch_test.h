@@ -144,6 +144,8 @@ public:
 		lifetimeModel = new lifetime_t(cycleModel, calendarModel, replacementOption, replacementCapacity);
 		thermalModel = new thermal_t(1.0, mass, length, width, height, resistance, Cp, h, T_room, capacityVsTemperature);
 		lossModel = new losses_t(dtHour, lossChoice, monthlyLosses, monthlyLosses, monthlyLosses, fullLosses);
+
+
 		batteryModel = new battery_t(dtHour, chemistry);
 		batteryModel->initialize(capacityModel, voltageModel, lifetimeModel, thermalModel, lossModel);
 		dispatchManual = new dispatch_manual_t(batteryModel, dtHour, SOC_min, SOC_max, currentChoice, currentChargeMax, currentDischargeMax, powerChargeMax, powerDischargeMax, powerChargeMax, powerDischargeMax, minimumModeTime,

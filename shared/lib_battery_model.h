@@ -85,17 +85,21 @@ struct battery_state{
     double batt_voltage;
     lifetime_state lifetime;
     thermal_state thermal;
-//    double loss;
+    size_t replacements;
 };
 
 class battery
 {
 public:
-    battery(const battery_properties_params& prop);
+    battery(const std::shared_ptr<const battery_properties_params>& prop);
 
     battery(const battery& battery);
 
     ~battery();
+
+    void set_replacement_params(const std::shared_ptr<const storage_replacement_params>& p){
+        replacement_params = p;
+    }
 
     // Run all for single time step
     void run(const storage_time_state& time, double I_guess);
@@ -119,9 +123,12 @@ public:
 
     double battery_voltage_nominal(); // the nominal battery voltage
 
+    size_t get_n_replacements(){return replacements;}
+
 private:
 
-    const battery_properties_params& params;
+    std::shared_ptr<const battery_properties_params> params;
+    std::shared_ptr<const storage_replacement_params> replacement_params;
 
     battery_capacity_interface * capacity;
     battery_thermal * thermal;
@@ -129,12 +136,15 @@ private:
     battery_voltage_interface * voltage;
     battery_losses * losses;
 
+    size_t replacements;
+
     // Run a component level model
     void run_capacity_model(double &I);
     void run_voltage_model();
     void run_thermal_model(double I, const storage_time_state &time);
     void run_lifetime_model(const size_t &lifetime_index);
     void run_losses_model(const storage_time_state &time);
+    void run_replacement(const storage_time_state &time);
 
 };
 
