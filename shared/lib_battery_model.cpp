@@ -214,7 +214,7 @@ void battery::run_capacity_model(double &I)
 
 void battery::run_voltage_model()
 {
-    voltage->updateVoltage(capacity->get_state(), thermal->get_T_battery());
+    voltage->updateVoltage(capacity->get_I(), capacity->get_q1(), capacity->get_q10(), thermal->get_T_battery());
 }
 
 void battery::run_lifetime_model(const size_t &lifetime_index)

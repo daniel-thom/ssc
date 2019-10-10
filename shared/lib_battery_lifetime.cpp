@@ -329,7 +329,17 @@ params_p(params) {
         for (size_t i = 0; i != params_p->calendar_matrix.nrows(); i++) {
             table_days.emplace_back((int) params_p->calendar_matrix.at(i, 0));
             table_capacity.emplace_back(params_p->calendar_matrix.at(i, 1));
+            double slope = 0;
+            double intercept = table_capacity[i];
+            if (i > 0){
+                slope = (table_capacity[i] - table_capacity[i-1])/((double)table_days[i] - (double)table_days[i-1]);
+                intercept = table_capacity[i-1] - (slope * (double)table_days[i-1]);
+            }
+            slopes.emplace_back(slope);
+            intercepts.emplace_back(intercept);
         }
+        slopes.emplace_back(slopes.back());
+        intercepts.emplace_back(intercepts.back());
     }
 }
 
@@ -342,7 +352,7 @@ params_p(lifetime_calendar.params_p)
     state = lifetime_calendar.state;
 }
 
-void lifetime_calendar::runLifetimeCalendarModel(size_t idx, double T, double SOC)
+void lifetime_calendar::runLifetimeCalendarModel(size_t idx, double T, double SOC_ratio)
 {
     if (params_p->choice != battery_lifetime_params::NONE)
     {
@@ -354,7 +364,7 @@ void lifetime_calendar::runLifetimeCalendarModel(size_t idx, double T, double SO
                 state.day_age_of_battery++;
 
             if (params_p->choice == battery_lifetime_params::MODEL)
-                runLithiumIonModel(T, SOC);
+                runLithiumIonModel(T, SOC_ratio);
             else if (params_p->choice == battery_lifetime_params::TABLE)
                 runTableModel();
 
@@ -375,38 +385,13 @@ void lifetime_calendar::runLithiumIonModel(double T, double SOC_ratio)
 }
 void lifetime_calendar::runTableModel()
 {
-    size_t n = table_days.size() - 1;
-    int day_lo = 0;
-    int day_hi = table_days[n];
-    double capacity_lo = 100;
-    double capacity_hi = 0;
-
-    // interpolation mode
-    for (int i = 0; i != (int)table_days.size(); i++)
-    {
-        int day = table_days[i];
-        double capacity = table_capacity[i];
-        if (day <= state.day_age_of_battery)
-        {
-            day_lo = day;
-            capacity_lo = capacity;
-        }
-        if (day > state.day_age_of_battery)
-        {
-            day_hi = day;
-            capacity_hi = capacity;
-            break;
-        }
+    size_t row = 0;
+    while (state.day_age_of_battery > table_days[row] && row < table_capacity.size()){
+        row++;
     }
-    if (day_lo == day_hi)
-    {
-        day_lo = table_days[n - 1];
-        day_hi = table_days[n];
-        capacity_lo = table_capacity[n - 1];
-        capacity_hi = table_capacity[n];
-    }
+    auto prev_row = (size_t)fmin(0, row - 1);
 
-    state.q = util::interpolate(day_lo, capacity_lo, day_hi, capacity_hi, state.day_age_of_battery);
+    state.q = slopes[row] * state.day_age_of_battery + intercepts[row];
 }
 
 void lifetime_calendar::replaceBattery(double replacement_percent)
@@ -426,9 +411,9 @@ Define Lifetime Model
 battery_lifetime::battery_lifetime(const std::shared_ptr<const battery_lifetime_params> &p):
         cycle_model(new lifetime_cycle(p)),
         calendar_model(new lifetime_calendar(p)),
-        params(p),
-        relative_q(100)
+        params(p)
 {
+    relative_q = fmin(cycle_model->get_relative_q(), calendar_model->get_relative_q());
 }
 
 

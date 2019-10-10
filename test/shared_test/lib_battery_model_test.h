@@ -171,7 +171,6 @@ public:
     double tol = 0.01;
 
     std::unique_ptr<battery> batteryModel;
-    std::unique_ptr<battery_t> model;
 
     battery_properties_params params;
     std::shared_ptr<storage_time_params> time;
@@ -220,18 +219,6 @@ public:
                                             life_params,
                                             loss_params});
         batteryModel = std::unique_ptr<battery>(new battery(params));
-
-        auto capacityModel = new capacity_lithium_ion_t(q, SOC_init, SOC_max, SOC_min);
-        auto voltageModel = new voltage_dynamic_t(n_series, n_strings, Vnom_default, Vfull, Vexp, Vnom, Qfull, Qexp, Qnom, C_rate, resistance);
-        auto cycleModel = new lifetime_cycle_t(cycleLifeMatrix);
-        auto calendarModel = new lifetime_calendar_t(1, calendarLifeMatrix, dt_hour, calendar_q0, calendar_a, calendar_b, calendar_c);
-        auto lifetimeModel = new lifetime_t(cycleModel, calendarModel, 0, 0);
-        auto thermalModel = new thermal_t(1.0, mass, 0.58, 0.58, 0.58, resistance, Cp, h, T_room,
-                                     capacityVsTemperature);
-        auto lossModel = new losses_t(dt_hour, lossChoice, monthlyLosses, monthlyLosses, monthlyLosses, fullLosses);
-        model = std::unique_ptr<battery_t>(new battery_t(dt_hour, 1));
-        model->initialize(capacityModel, voltageModel, lifetimeModel, thermalModel, lossModel);
-
     }
 
 };

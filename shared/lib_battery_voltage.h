@@ -47,7 +47,7 @@ public:
 
     virtual ~battery_voltage_interface(){};
 
-    virtual void updateVoltage(const capacity_state &capacity, double T_battery_K = 0) = 0;
+    virtual void updateVoltage(const double &I, const double &q, const double &qmax, double T_battery_K) = 0;
 
     virtual void set_batt_voltage(double) = 0;
 
@@ -87,7 +87,7 @@ public:
 
     voltage_table(const voltage_table&);
 
-    void updateVoltage(const capacity_state &capacity, double T_battery_K = 0) override;
+    void updateVoltage(const double &I, const double &q, const double &qmax, double temp) override;
 
     void set_batt_voltage(double v) override { cell_voltage_state = v / params->num_cells_series;}
 
@@ -120,7 +120,7 @@ public:
     voltage_dynamic(const voltage_dynamic&);
 
     void parameter_compute();
-    void updateVoltage(const capacity_state &capacity, double T_battery_K) override;
+    void updateVoltage(const double &I, const double &q, const double &qmax, double temp) override;
 
     void set_batt_voltage(double v) override { cell_voltage_state = v / params->num_cells_series;}
 
@@ -154,7 +154,7 @@ public:
     // copy from voltage to this
     voltage_vanadium_redox(const voltage_vanadium_redox &);
 
-    void updateVoltage(const capacity_state &capacity, double T_battery_K) override;
+    void updateVoltage(const double &I, const double &q, const double &qmax, double T_battery_K) override;
 
     void set_batt_voltage(double v) override { cell_voltage_state = v / params->num_cells_series;}
 

@@ -25,11 +25,11 @@ params(voltage.params)
 }
 
 
-void voltage_table::updateVoltage(const capacity_state &capacity, double)
+void voltage_table::updateVoltage(const double &I, const double &q, const double &qmax, double)
 {
     double cell_voltage = cell_voltage_state;
-    double DOD = capacity.DOD;
-    double I_string = capacity.I / params->num_strings;
+    double DOD = (1. -  q / qmax) * 100.;
+    double I_string = I / params->num_strings;
     double DOD_lo = -1, DOD_hi = -1, V_lo = -1, V_hi = -1;
     bool voltage_found = exactVoltageFound(DOD, cell_voltage);
     if (!voltage_found)
@@ -120,15 +120,11 @@ void voltage_dynamic::parameter_compute()
     E0 = params->Vfull + K + params->resistance * I - A;
 }
 
-void voltage_dynamic::updateVoltage(const capacity_state &capacity, double )
+void voltage_dynamic::updateVoltage(const double &I, const double &q, const double &qmax, double)
 {
-    double Q = capacity.qmax;
-    double I = capacity.I;
-    double q0 = capacity.q0;
-
     // is on a per-cell basis.
     // I, Q, q0 are on a per-string basis since adding cells in series does not change current or charge
-    double cell_voltage = voltage_model_tremblay_hybrid(Q / params->num_strings, I / params->num_strings , q0 / params->num_strings);
+    double cell_voltage = voltage_model_tremblay_hybrid(qmax / params->num_strings, I / params->num_strings , q / params->num_strings);
 
     // the cell voltage should not increase when the battery is discharging
     if (I <= 0 || (I > 0 && cell_voltage <= cell_voltage_state) )
@@ -164,17 +160,14 @@ params(voltage.get_params())
         cell_voltage_state = voltage.cell_voltage_state;
 }
 
-void voltage_vanadium_redox::updateVoltage(const capacity_state &capacity, double T_battery_K )
+void
+voltage_vanadium_redox::updateVoltage(const double &I, const double &q, const double &qmax, double T_battery_K)
 {
-    double Q = capacity.qmax;
-    double I = capacity.I;
-    double q0 = capacity.q0;
-
     double T = T_battery_K;
 
     // is on a per-cell basis.
     // I, Q, q0 are on a per-string basis since adding cells in series does not change current or charge
-    double cell_voltage = voltage_model(Q / params->num_strings, q0 / params->num_strings, I/ params->num_strings, T);
+    double cell_voltage = voltage_model(qmax / params->num_strings, q / params->num_strings, I/ params->num_strings, T);
 
     // the cell voltage should not increase when the battery is discharging
     if (I <= 0 || (I > 0 && cell_voltage <= cell_voltage_state))

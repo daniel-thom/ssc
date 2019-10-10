@@ -1365,6 +1365,9 @@ thermal_t::thermal_t(double dt_hour, double mass, double length, double width, d
 
     // exp(-A*h*t/m/Cp) < tol
     t_threshold = -_mass * _Cp / _A / _h * log(tolerance) + dt_sec;
+
+    for (size_t i = 0; i < _cap_vs_temp.nrows(); i++)
+        _cap_vs_temp(i,0) += 273.15;
 }
 
 thermal_t::thermal_t(const thermal_t& thermal){

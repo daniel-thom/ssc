@@ -78,6 +78,24 @@ TEST_F(lib_battery_lifetime_calendar_matrix_test, runCalendarMatrixTest) {
     }
     s = calendar_lifetime_state({41,99.775,999,0,0});
     compareState(cal_model->get_state(), s, "runCalendarMatrixTest: 2");
+
+    while (idx < 24*7301){
+        if (idx % 2 != 0){
+            SOC = 90;
+        }
+        cal_model->runLifetimeCalendarModel(idx, T, SOC);
+        idx++;
+    }
+    s = calendar_lifetime_state({7300,50.0,175223,0,0});
+    compareState(cal_model->get_state(), s, "runCalendarMatrixTest: 3");
+
+    while (idx < 24*7301+24){
+        if (idx % 2 != 0){
+            SOC = 90;
+        }
+        cal_model->runLifetimeCalendarModel(idx, T, SOC);
+        idx++;
+    }
 }
 
 TEST_F(lib_battery_lifetime_calendar_matrix_test, replaceBatteryTest) {
@@ -104,11 +122,11 @@ TEST_F(lib_battery_lifetime_calendar_model_test, SetUpTest) {
 }
 
 TEST_F(lib_battery_lifetime_calendar_model_test, runCalendarModelTest) {
-    double T = 278, SOC = 20;       // not used but required for function
+    double T = 278, SOC = .20;       // not used but required for function
     int idx = 0;
     while (idx < 500){
         if (idx % 2 != 0){
-            SOC = 90;
+            SOC = .90;
         }
         model->runLifetimeCalendarModel(idx, T, SOC);
         idx++;
@@ -118,7 +136,7 @@ TEST_F(lib_battery_lifetime_calendar_model_test, runCalendarModelTest) {
 
     while (idx < 1000){
         if (idx % 2 != 0){
-            SOC = 90;
+            SOC = .90;
         }
         model->runLifetimeCalendarModel(idx, T, SOC);
         idx++;
@@ -128,11 +146,11 @@ TEST_F(lib_battery_lifetime_calendar_model_test, runCalendarModelTest) {
 }
 
 TEST_F(lib_battery_lifetime_calendar_model_test, replaceBatteryTest) {
-    double T = 278, SOC = 20;
+    double T = 278, SOC = .20;
     int idx = 0;
     while (idx < 200000){
         if (idx % 2 != 0){
-            SOC = 90;
+            SOC = .90;
         }
         model->runLifetimeCalendarModel(idx, T, SOC);
         idx++;
@@ -147,39 +165,32 @@ TEST_F(lib_battery_lifetime_calendar_model_test, replaceBatteryTest) {
 }
 
 TEST_F(lib_battery_lifetime_test, ReplaceByCapacityTest){
-    storage_time_state time_state(dt_hour);
-    double SOC = 95;
+    size_t idx = 0;
     // set the charge mode different from previous charge model to trigger runCycleLifetime calculation
 
-    while (time_state.get_index() < 1752){
-        SOC = 5;
-        model->runLifetimeModels(time_state.get_lifetime_index(), SOC, true, 293);
-        time_state.increment();
-        SOC = 95;
-        model->runLifetimeModels(time_state.get_lifetime_index(), SOC, true, 293);
-        time_state.increment();
+    while (idx < 876){
+        model->runLifetimeModels(idx, 5, true, 293);
+        model->runLifetimeModels(idx, 95, true, 293);
+        idx++;
     }
     auto s = lifetime_state({{82.5, 90, 90, 90, 90, 875, 2, std::vector<double>()},
-                                 {72, 101.92, 1751, 0.000632, 0.000632}, 82.5});
+                                 {36, 101.936, 875, 0.000632, 0.000632}, 82.5});
     compareState(model->get_state(), s, "ReplaceByCapacityTest: 1");
 
-    while (time_state.get_index() < 4202){
-        SOC = 25;
-        model->runLifetimeModels(time_state.get_lifetime_index(), SOC, true, 293);
-        time_state.increment();
-        SOC = 75;
-        model->runLifetimeModels(time_state.get_lifetime_index(), SOC, true, 293);
-        time_state.increment();
+    while (idx < 2101){
+        model->runLifetimeModels(idx, 25, true, 293);
+        model->runLifetimeModels(idx, 75, true, 293);
+        idx++;
     }
     s = lifetime_state({{59.998, 50, 70, 50, 66.682, 2099, 4, std::vector<double>()},
-                                 {175, 101.878, 4201, 0.00155, 0.00155}, 60.015});
+                                 {87, 101.845, 2100, 0.00155, 0.00155}, 60.015});
 
     compareState(model->get_state(), s, "ReplaceByCapacityTest: 2");
 
     model->replaceBattery(100);
 
     s = lifetime_state({{100, 0, 0, 0, 66.682, 0, 0, std::vector<double>()},
-                        {0, 102, 4201, 0, 0}, 100});
+                        {0, 102, 2100, 0, 0}, 100});
 
     compareState(model->get_state(), s, "ReplaceByCapacityTest: 3");
 

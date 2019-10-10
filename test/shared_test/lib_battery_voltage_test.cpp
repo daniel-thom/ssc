@@ -11,7 +11,7 @@ TEST_F(voltage_table_lib_battery_voltage_test, SetUpTest) {
 TEST_F(voltage_table_lib_battery_voltage_test, updateCapacityTest){
     double I = 2;
     cap->updateCapacity(I); // cap = 3
-    model->updateVoltage(cap->get_state(), 0);
+    model->updateVoltage(cap->get_I(), cap->get_q1(), cap->get_q10(), 0);
     EXPECT_NEAR(model->get_cell_voltage(), 1.65, tol) << "UpdateCapacityTest";
 }
 
@@ -35,7 +35,7 @@ TEST_F(voltage_dynamic_lib_battery_voltage_test, NickelMetalHydrideFromPaperTest
         double I = 6.5;
         time->dt_hour = dt_hr[i];           // other time parameters are unused by capacity model
         cap->updateCapacity(I);
-        model->updateVoltage(cap->get_state(), 0);
+        model->updateVoltage(cap->get_I(), cap->get_q1(), cap->get_q10(), 0);
         EXPECT_NEAR(model->get_battery_voltage(), voltages[i], 0.05) << "NickelMetalHydrideFromPaperTest: " + std::to_string(i);
     }
 }
@@ -43,17 +43,17 @@ TEST_F(voltage_dynamic_lib_battery_voltage_test, NickelMetalHydrideFromPaperTest
 TEST_F(voltage_dynamic_lib_battery_voltage_test, updateCapacityTest){
     double I = 2;
     cap->updateCapacity(I); // qmx = 10, q0 = 3
-    model->updateVoltage(cap->get_state(), 0);
+    model->updateVoltage(cap->get_I(), cap->get_q1(), cap->get_q10(), 0);
     EXPECT_NEAR(model->get_cell_voltage(), 3.9, tol);
 
     I = -2;
     cap->updateCapacity(I); // qmx = 10, q0 = 5
-    model->updateVoltage(cap->get_state(), 0);
+    model->updateVoltage(cap->get_I(), cap->get_q1(), cap->get_q10(), 0);
     EXPECT_NEAR(model->get_cell_voltage(), 4.1, tol);
 
     I = 5;
     cap->updateCapacity(I); // qmx = 10, I = 4.5, q0 = 0.5
-    model->updateVoltage(cap->get_state(), 0);
+    model->updateVoltage(cap->get_I(), cap->get_q1(), cap->get_q10(), 0);
     EXPECT_NEAR(model->get_cell_voltage(), 2.49, tol);
 }
 
@@ -64,16 +64,16 @@ TEST_F(voltage_vanadium_redox_lib_battery_voltage_test, SetUpTest) {
 TEST_F(voltage_vanadium_redox_lib_battery_voltage_test, updateCapacityTest){
     double I = 2;
     cap->updateCapacity(I); // qmx = 10, q0 = 3
-    model->updateVoltage(cap->get_state(), 0);
+    model->updateVoltage(cap->get_I(), cap->get_q1(), cap->get_q10(), 0);
     EXPECT_NEAR(model->get_cell_voltage(), 3.55, tol);
 
     I = -2;
     cap->updateCapacity(I); // qmx = 10, q0 = 5
-    model->updateVoltage(cap->get_state(), 0);
+    model->updateVoltage(cap->get_I(), cap->get_q1(), cap->get_q10(), 0);
     EXPECT_NEAR(model->get_cell_voltage(), 3.64, tol);
 
     I = 5;
     cap->updateCapacity(I); // qmx = 10,q0 = 0.5
-    model->updateVoltage(cap->get_state(), 0);
+    model->updateVoltage(cap->get_I(), cap->get_q1(), cap->get_q10(), 0);
     EXPECT_NEAR(model->get_cell_voltage(), 3.5, tol);
 }

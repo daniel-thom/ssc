@@ -161,7 +161,6 @@ TEST_F(lib_battery_test, runTestCycleAt1C){
     double I = Qfull * n_strings;
     storage_time_state time(1);
     batteryModel->run(time, I);
-    model->run(time.get_lifetime_index(), I);
     capacity_passed += batteryModel->get_I() * batteryModel->get_V() / 1000.;
 
     auto s = battery_state({{479.75, 1000, 960.65, 20.25, 0, 49.94, 50.059, 0, 2}, // cap
@@ -173,7 +172,6 @@ TEST_F(lib_battery_test, runTestCycleAt1C){
 
     while (batteryModel->get_SOC() > SOC_min + 1){
         batteryModel->run(time.increment(), I);
-        model->run(time.get_lifetime_index(), I);
         capacity_passed += batteryModel->get_I() * batteryModel->get_V() / 1000.;
     }
     // the SOC isn't at 5 so it means the controller is not able to calculate a current/voltage at which to discharge to 5
@@ -189,30 +187,11 @@ TEST_F(lib_battery_test, runTestCycleAt1C){
     while (n_cycles-- > 0){
         while (batteryModel->get_SOC() < SOC_max - 1){
             batteryModel->run(time.increment(), -I);
-            model->run(time.get_lifetime_index(), -I);
             capacity_passed += -batteryModel->get_I() * batteryModel->get_V() / 1000.;
-            auto batt = batteryModel->get_state();
-            assert(model->capacity_model()->I() == batteryModel->get_I());
-            assert(model->thermal_model()->capacity_percent() == batt.thermal.capacity_percent);
-            assert(abs(model->lifetime_model()->capacity_percent_calendar()- batt.lifetime.calendar.q) < 1e-2);
-            assert(model->lifetime_model()->capacity_percent_cycle() == batt.lifetime.cycle.relative_q);
-            assert(model->voltage_model()->battery_voltage() == batt.batt_voltage);
         }
         while (batteryModel->get_SOC() > SOC_min + 1){
-            if (time.get_lifetime_index() == 6068)
-                int x = 0;
             batteryModel->run(time.increment(), I);
-            model->run(time.get_lifetime_index(), I);
             capacity_passed += batteryModel->get_I() * batteryModel->get_V() / 1000.;
-            auto batt = batteryModel->get_state();
-            assert(model->capacity_model()->I() == batteryModel->get_I());
-            assert(model->thermal_model()->capacity_percent() == batt.thermal.capacity_percent);
-            assert(abs(model->lifetime_model()->capacity_percent_calendar()- batt.lifetime.calendar.q) < 1e-2);
-
-            assert(model->lifetime_model()->capacity_percent_cycle() == batt.lifetime.cycle.relative_q);
-            assert(model->voltage_model()->battery_voltage() == batt.batt_voltage);
-
-
         }
     }
     // the SOC isn't at 5 so it means the controller is not able to calculate a current/voltage at which to discharge to 5
@@ -224,11 +203,9 @@ TEST_F(lib_battery_test, runTestCycleAt1C){
 
     compareState(batteryModel->get_state(), s, "runTestCycleAt1C: 3");
 
-    std::cerr << "\n"<< capacity_passed << " " << time.get_lifetime_index() << "\n";
-
-    EXPECT_NEAR(capacity_passed, 365045, 1000) << "Current passing through cell";
+    EXPECT_NEAR(capacity_passed, 365045, 1000) << "runTestCycleAt1C: Current passing through cell";
     double qmax = fmax(s.capacity.qmax, s.capacity.qmax_thermal);
-    EXPECT_NEAR(qmax/q, .93, 0.01) << "capacity relative to max capacity";
+    EXPECT_NEAR(qmax/q, .93, 0.01) << "runTestCycleAt1C: Capacity relative to max capacity";
 }
 
 TEST_F(lib_battery_test, runTestCycleAt3C){
@@ -243,7 +220,7 @@ TEST_F(lib_battery_test, runTestCycleAt3C){
                             {{100, 0, 0, 0, 0, 0, 0, std::vector<double>()}, // cycle
                              {0, 102}, 100}, // calendar
                             {96.58, 293.88, 293.15, 293.15, 7200}}); // thermal
-    compareState(batteryModel->get_state(), s, "runTest: 1");
+    compareState(batteryModel->get_state(), s, "runTestCycleAt3C: 1");
 
     while (batteryModel->get_SOC() > SOC_min + 1){
         batteryModel->run(time.increment(), I);
@@ -255,7 +232,7 @@ TEST_F(lib_battery_test, runTestCycleAt3C){
                        {{100, 0, 0, 0, 0, 0, 0, std::vector<double>()}, // cycle
                         {0, 101.98, 7}, 101.98}, // calendar
                        {96.11, 293.288, 293.15, 293.15, 32400}}); // thermal
-    compareState(batteryModel->get_state(), s, "runTest: 2");
+    compareState(batteryModel->get_state(), s, "runTestCycleAt3C: 2");
 
     size_t n_cycles = 400;
 
@@ -277,10 +254,10 @@ TEST_F(lib_battery_test, runTestCycleAt3C){
                        {{94.20, 76.16, 76.17, 76.17, 76.62, 303, 194, std::vector<double>()}, // cycle
                         {469, 100.21, 11278, 0.0178, 0.0178}, 93.08}, // calendar
                        {96.097, 293.27, 293.15, 293.15, 40608000}}); // thermal
-    compareState(batteryModel->get_state(), s, "runTest: 3");
+    compareState(batteryModel->get_state(), s, "runTestCycleAt3C: 3");
 
 
-    EXPECT_NEAR(capacity_passed, 316781, 100) << "Current passing through cell";
+    EXPECT_NEAR(capacity_passed, 316781, 100) << "runTestCycleAt3C: Current passing through cell";
     double qmax = fmax(s.capacity.qmax, s.capacity.qmax_thermal);
-    EXPECT_NEAR(qmax/q, .94, 0.01) << "capacity relative to max capacity";
+    EXPECT_NEAR(qmax/q, .94, 0.01) << "runTestCycleAt3C: Capacity relative to max capacity";
 }

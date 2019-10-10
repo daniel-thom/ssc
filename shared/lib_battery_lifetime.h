@@ -101,7 +101,7 @@ public:
     virtual ~lifetime_calendar(){/* Nothing to do */};
 
     /// Given the index of the simulation, the tempertature and SOC, return the effective capacity percent
-    void runLifetimeCalendarModel(size_t idx, double T, double SOC);
+    void runLifetimeCalendarModel(size_t idx, double T, double SOC_ratio);
 
     /// Reset or augment the capacity
     void replaceBattery(double replacement_percent);
@@ -125,6 +125,10 @@ private:
     double dt_day;
     std::vector<int> table_days;
     std::vector<double> table_capacity;
+    std::vector<double> slopes;
+    std::vector<double> intercepts;
+
+
 };
 
 
