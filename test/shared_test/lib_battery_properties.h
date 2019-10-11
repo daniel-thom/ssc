@@ -47,6 +47,8 @@ public:
 	double h;
 	std::vector<double> T_room;
 	util::matrix_t<double> capacityVsTemperature;
+    util::matrix_t<double> capacityVsTemperatureNew;
+
 
 	// losses
 	std::vector<double> monthlyLosses;

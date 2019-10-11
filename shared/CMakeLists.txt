@@ -70,7 +70,7 @@ set(SHARED_SRC
 	lib_battery_lifetime.cpp
 	lib_battery_model.cpp
 	lib_dispatch_params.cpp
-#	lib_dispatch.cpp
+	lib_dispatch.cpp
 	lib_dispatch_powerflow.cpp
 	vartab.cpp
 		)

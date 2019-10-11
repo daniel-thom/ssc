@@ -159,13 +159,12 @@ public:
     void replaceBattery(double replacement_percent);
 
     /// Reset the number of replacements at the year end
-    void reset_replacements();
+    double estimateCycleDamage(){
+        return cycle_model->estimateCycleDamage();
+    }
 
     /// Return the relative capacity percentage of nominal (%)
     double get_capacity_percent() {return relative_q;}
-
-    /// Return the number of total replacements in the year
-    int get_replacements();
 
     void set_state(const lifetime_state& s) {
         cycle_model->set_state(s.cycle);

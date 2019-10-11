@@ -1,10 +1,40 @@
-#ifndef SYSTEM_ADVISOR_MODEL_LIB_DISPATCH_H
-#define SYSTEM_ADVISOR_MODEL_LIB_DISPATCH_H
+/**
+BSD-3-Clause
+Copyright 2019 Alliance for Sustainable Energy, LLC
+Redistribution and use in source and binary forms, with or without modification, are permitted provided 
+that the following conditions are met :
+1.	Redistributions of source code must retain the above copyright notice, this list of conditions 
+and the following disclaimer.
+2.	Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+and the following disclaimer in the documentation and/or other materials provided with the distribution.
+3.	Neither the name of the copyright holder nor the names of its contributors may be used to endorse 
+or promote products derived from this software without specific prior written permission.
 
-#include "lib_dispatch_params.h"
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, 
+INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE 
+ARE DISCLAIMED.IN NO EVENT SHALL THE COPYRIGHT HOLDER, CONTRIBUTORS, UNITED STATES GOVERNMENT OR UNITED STATES 
+DEPARTMENT OF ENERGY, NOR ANY OF THEIR EMPLOYEES, BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, 
+OR CONSEQUENTIAL DAMAGES(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; 
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, 
+WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT 
+OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
 
+#include <memory>
+
+
+#include "lib_battery.h"
 #include "lib_battery_model.h"
-#include "lib_dispatch_powerflow.h"
+
+
+#ifndef __LIB_DISPATCH_H__
+#define __LIB_DISPATCH_H__
+
+// Forward declarations to speed up build
+struct BatteryPower;
+class BatteryPowerFlow;
+class UtilityRate;
+class UtilityRateCalculator;
 
 /*
 Dispatch Base Class - can envision many potential modifications. Goal is to define standard API
@@ -12,7 +42,37 @@ Dispatch Base Class - can envision many potential modifications. Goal is to defi
 class dispatch_interface
 {
 public:
-    dispatch_interface(){}
+
+    enum FOM_MODES { FOM_LOOK_AHEAD, FOM_LOOK_BEHIND, FOM_FORECAST, FOM_CUSTOM_DISPATCH, FOM_MANUAL };
+    enum BTM_MODES { LOOK_AHEAD, LOOK_BEHIND, MAINTAIN_TARGET, CUSTOM_DISPATCH, MANUAL };
+    enum METERING { BEHIND, FRONT };
+    enum PV_PRIORITY { MEET_LOAD, CHARGE_BATTERY };
+    enum CURRENT_CHOICE { RESTRICT_POWER, RESTRICT_CURRENT, RESTRICT_BOTH };
+    enum FOM_CYCLE_COST {MODEL_CYCLE_COST, INPUT_CYCLE_COST};
+    enum CONNECTION { DC_CONNECTED, AC_CONNECTED };
+
+    dispatch_interface(std::shared_ptr<battery> Battery,
+               double dt,
+               double SOC_min,
+               double SOC_max,
+               int current_choice,
+               double Ic_max,
+               double Id_max,
+               double Pc_max_kwdc,
+               double Pd_max_kwdc,
+               double Pc_max_kwac,
+               double Pd_max_kwac,
+               double t_min,
+               int dispatch_mode,
+               int meter_position);
+
+    // deep copy constructor (new memory), from dispatch to this
+    dispatch_interface(const dispatch_interface& dispatch);
+
+    // copy members from dispatch to this
+    virtual void copy(const dispatch_interface * dispatch);
+
+    void delete_clone();
 
     virtual ~dispatch_interface();
 
@@ -21,35 +81,93 @@ public:
                           size_t hour_of_year,
                           size_t step) = 0;
 
-
+    /// Method to check any operational constraints and modify the battery current if needed
+    virtual bool check_constraints(double &I, size_t count);
 
     /// Method to recalculate the battery state based upon the final constrained current
-    virtual void finalize(size_t index, double &I) = 0;
+    virtual void finalize(const storage_time_state &time, double &I);
+
+    std::shared_ptr<battery> battery_model(){ return _Battery; }
+
+    // ac outputs
+    double power_tofrom_battery();
+    double power_tofrom_grid();
+    double power_gen();
+    double power_pv_to_load();
+    double power_battery_to_load();
+    double power_grid_to_load();
+    double power_fuelcell_to_load();
+    double power_pv_to_batt();
+    double power_grid_to_batt();
+    double power_fuelcell_to_batt();
+    double power_pv_to_grid();
+    double power_battery_to_grid();
+    double power_fuelcell_to_grid();
+    double power_conversion_loss();
+    double power_system_loss();
+
+    virtual double power_grid_target(){	return 0;}
+    virtual double power_batt_target(){ return 0.;}
+    virtual double cost_to_cycle() { return 0.;}
 
     // control settings
     double battery_power_to_fill();
 
     message get_messages();
 
+    /// Return a pointer to the underlying calculated power quantities
+    BatteryPower * getBatteryPower();
+
+    /// Return a pointer to the object which calculates the battery power flow
+    BatteryPowerFlow * getBatteryPowerFlow();
+
 protected:
 
     /// Helper function to run common dispatch tasks.  Requires that m_batteryPower->powerBattery is previously defined
-    static void runDispatch(const storage_state &time, double &target_power,
-                            std::shared_ptr<battery_powerflow> powerflow);
+    virtual void runDispatch(size_t year, size_t hour, size_t step);
 
     // Initialization help
-    void init(battery_t * Battery,
+    void init(battery *Battery,
               double dt_hour,
               int current_choice,
               double t_min,
               int mode);
 
+    // Controllers
+    virtual	void SOC_controller();
+    void switch_controller();
+    double current_controller(double battery_voltage);
+    bool restrict_current(double &I);
+    bool restrict_power(double &I);
+
+    std::shared_ptr<battery> _Battery;
+    battery_state _Battery_initial;
+
+    double _dt_hour;
+
+    /**
+    The dispatch mode.
+    For behind-the-meter dispatch: 0 = LOOK_AHEAD, 1 = LOOK_BEHIND, 2 = MAINTAIN_TARGET, 3 = MANUAL
+    For front-of-meter dispatch: 0 = LOOK_AHEAD, 1 = LOOK_BEHIND, 2 = INPUT FORECAST, 3 = MANUAL
+    */
+    int _mode;
+
+    // allocated and managed internally
+    std::unique_ptr<BatteryPowerFlow> m_batteryPowerFlow;
+
+    // managed by BatteryPowerFlow
+    BatteryPower * m_batteryPower;
+
     // Charge & current limits controllers
+    int _current_choice;
     double _t_min;
     double _e_max;
     double _P_target;
 
     // rapid charge change controller
+    int _t_at_mode; // [minutes]
+    bool _charging;
+    bool _prev_charging;
     bool _grid_recharge;
 
     // messages
@@ -59,10 +177,10 @@ protected:
 /*
 Manual dispatch class
 */
-class dispatch_manual_t : public dispatch_interface
+class dispatch_manual : public dispatch_interface
 {
 public:
-    dispatch_manual_t(battery *Battery,
+    dispatch_manual(std::shared_ptr<battery> Battery,
                       double dt_hour,
                       double SOC_min,
                       double SOC_max,
@@ -86,9 +204,12 @@ public:
                       std::map<size_t, double> dm_percent_gridcharge);
 
     // deep copy constructor (new memory), from dispatch to this
-    dispatch_manual_t(const dispatch_interface& dispatch);
+    dispatch_manual(const dispatch_interface& dispatch);
 
-    virtual ~dispatch_manual_t(){};
+    // copy members from dispatch to this
+    virtual void copy(const dispatch_interface * dispatch);
+
+    virtual ~dispatch_manual(){};
 
     /// Public API to run the battery dispatch model for the current timestep, given the system power, and optionally the electric load, amount of system clipping, or specified battery power
     virtual void dispatch(size_t year,
@@ -117,8 +238,7 @@ protected:
             std::map<size_t, double> dm_percent_gridcharge);
 
     void SOC_controller();
-    bool check_constraints(double &I, size_t count, const battery_state batt_state,
-                           const battery_power_params &power_params);
+    bool check_constraints(double &I, size_t count);
 
     util::matrix_t < size_t > _sched;
     util::matrix_t < size_t > _sched_weekend;
@@ -131,44 +251,14 @@ protected:
     double _percent_discharge;
     double _percent_charge;
 
-    std::map<size_t, double> _percent_discharge_array;
+    std::map<size_t, double>  _percent_discharge_array;
     std::map<size_t, double> _percent_charge_array;
-
-private:
-    friend class dispatch_resiliency;
 };
 
-/*! Class containing calculated grid power at a single time step */
-class grid_point
-{
-    /**
-    Class for behind-the-meter dispatch which encapsulates the required grid power, hour, and step:
-    grid_point = [grid_power, hour, step]
-    */
-public:
-    grid_point(double grid = 0., size_t hour = 0, size_t step = 0) :
-            _grid(grid), _hour(hour), _step(step){}
-    double Grid() const { return _grid; }
-    size_t Hour() const { return _hour; }
-    size_t Step() const { return _step; }
-
-private:
-    double _grid;
-    size_t _hour;
-    size_t _step;
-};
-
-struct byGrid
-{
-    bool operator()(grid_point const  &a, grid_point const &b)
-    {
-        return a.Grid() > b.Grid();
-    }
-};
 typedef std::vector<grid_point> grid_vec;
 
 /*! Automated dispatch base class */
-class dispatch_automatic_t : public dispatch_interface
+class dispatch_automatic : public dispatch_interface
 {
     /**
     Class contains methods and data common to all automated dispatch strategies in SAM.
@@ -177,8 +267,8 @@ class dispatch_automatic_t : public dispatch_interface
         2. Initialization of PV power forecast used for automation
     */
 public:
-    dispatch_automatic_t(
-            battery_t * Battery,
+    dispatch_automatic(
+            std::shared_ptr<battery> Battery,
             double dt,
             double SOC_min,
             double SOC_max,
@@ -201,10 +291,10 @@ public:
             bool can_fuelcell_charge
     );
 
-    virtual ~dispatch_automatic_t(){};
+    virtual ~dispatch_automatic(){};
 
     // deep copy constructor (new memory), from dispatch to this
-    dispatch_automatic_t(const dispatch_interface& dispatch);
+    dispatch_automatic(const dispatch_interface& dispatch);
 
     // copy members from dispatch to this
     virtual void copy(const dispatch_interface * dispatch);
@@ -224,8 +314,7 @@ public:
     virtual void set_custom_dispatch(std::vector<double> P_batt_dc);
 
     /* Check constraints and re-dispatch if needed */
-    virtual bool check_constraints(double &I, size_t count, const battery_state batt_state,
-                                   const battery_power_params &power_params);
+    virtual bool check_constraints(double &I, size_t count);
 
     /// Return the battery power target set by the controller
     double power_batt_target();
@@ -233,7 +322,7 @@ public:
 protected:
 
     /*! Initialize with a pointer*/
-    void init_with_pointer(const dispatch_automatic_t * tmp);
+    void init_with_pointer(const dispatch_automatic * tmp);
 
     /*! Return the dispatch mode */
     int get_mode();
@@ -285,7 +374,7 @@ protected:
 };
 
 /*! Automated dispatch class for behind-the-meter connections */
-class dispatch_automatic_behind_the_meter_t : public dispatch_automatic_t
+class dispatch_automatic_behind_the_meter : public dispatch_automatic
 {
     /**
     Class contains methods and data required to automate dispatch for a behind-the-meter battery targeting peak-shaving applications.
@@ -295,8 +384,8 @@ class dispatch_automatic_behind_the_meter_t : public dispatch_automatic_t
         3. Method to update the electric load forecast
     */
 public:
-    dispatch_automatic_behind_the_meter_t(
-            battery_t * Battery,
+    dispatch_automatic_behind_the_meter(
+            std::shared_ptr<battery> Battery,
             double dt,
             double SOC_min,
             double SOC_max,
@@ -319,10 +408,10 @@ public:
             bool can_fuelcell_charge
     );
 
-    virtual ~dispatch_automatic_behind_the_meter_t(){};
+    virtual ~dispatch_automatic_behind_the_meter(){};
 
     // deep copy constructor (new memory), from dispatch to this
-    dispatch_automatic_behind_the_meter_t(const dispatch_interface& dispatch);
+    dispatch_automatic_behind_the_meter(const dispatch_interface& dispatch);
 
     // copy members from dispatch to this
     virtual void copy(const dispatch_interface * dispatch);
@@ -349,7 +438,7 @@ public:
 protected:
 
     /*! Initialize with a pointer*/
-    void init_with_pointer(const dispatch_automatic_behind_the_meter_t * tmp);
+    void init_with_pointer(const dispatch_automatic_behind_the_meter * tmp);
 
     void initialize(size_t hour_of_year);
     void check_debug(FILE *&p, bool & debug, size_t hour_of_year, size_t idx);
@@ -379,13 +468,10 @@ protected:
 
     /* Vector of length (24 hours * steps_per_hour) containing sorted grid calculation [P_grid, hour, step] */
     grid_vec sorted_grid;
-
-private:
-    friend class dispatch_resiliency;
 };
 
 /*! Automated Front of Meter DC-connected battery dispatch */
-class dispatch_automatic_front_of_meter_t : public dispatch_automatic_t
+class dispatch_automatic_front_of_meter : public dispatch_automatic
 {
 public:
     /**
@@ -396,8 +482,8 @@ public:
      3. Charging from the PV array during times of low PPA sell rates
      4. Charging from the PV array during times where the PV power would be clipped due to inverter limits (if DC-connected)
     */
-    dispatch_automatic_front_of_meter_t(
-            battery_t * Battery,
+    dispatch_automatic_front_of_meter(
+            std::shared_ptr<battery> Battery,
             double dt,
             double SOC_min,
             double SOC_max,
@@ -429,12 +515,10 @@ public:
             double etaDischarge
     );
 
-    dispatch_automatic_front_of_meter_t(int dispatch_mode, battery_t* Battery, const storage_time_params& t, const battery_properties_params& p);
-
-    virtual ~dispatch_automatic_front_of_meter_t();
+    virtual ~dispatch_automatic_front_of_meter();
 
     /*! deep copy constructor (new memory), from dispatch to this */
-    dispatch_automatic_front_of_meter_t(const dispatch_interface& dispatch);
+    dispatch_automatic_front_of_meter(const dispatch_interface& dispatch);
 
     /*! shallow copy from dispatch to this */
     virtual void copy(const dispatch_interface* dispatch);
@@ -468,7 +552,7 @@ public:
 
 protected:
 
-    void init_with_pointer(const dispatch_automatic_front_of_meter_t* tmp);
+    void init_with_pointer(const dispatch_automatic_front_of_meter* tmp);
     void setup_cost_forecast_vector();
 
     /*! Full clipping loss due to AC power limits vector [kW] */
@@ -504,100 +588,29 @@ protected:
 private:
     friend class dispatch_resiliency;
 };
-
-/*! Dispatches the battery in the case where the grid is unavailable */
-class dispatch_resiliency : public dispatch_interface {
-public:
-
-    explicit dispatch_resiliency(dispatch_automatic_behind_the_meter_t* orig);
-
-    explicit dispatch_resiliency(dispatch_manual_t* orig);
-
-protected:
-    double_vec battery_use;
-
-    double_vec load;
-
-    double_vec pv_gen;
-
-    void init_powerflow();
-
-    void set_pv_gen(double_vec pv);
-
-    void dispatch(size_t year, size_t hour_of_year, size_t step) override;
-
-};
-
-/*! Battery metrics class */
-class battery_metrics_t
-{
-    /**
-    Class which computes ac or dc energy metrics such as:
-    1. Annual energy sent to charge battery or discharged from battery
-    2. Annual energy charged from the grid or PV
-    3. Annual energy imported or exported to the grid annually
-    4. Average roundtrip and conversion efficiency
-    5. Percentage of energy charged from PV
-    */
-public:
-    battery_metrics_t(double dt_hour);
-    ~battery_metrics_t(){};
-
-    void compute_metrics_ac(const dispatch_powerflow_state * batteryPower);
-    //void compute_metrics_dc(const BatteryPower * batteryPower);
-    void compute_annual_loss();
-
-    void accumulate_energy_charge(double P_tofrom_batt);
-    void accumulate_energy_discharge(double P_tofrom_batt);
-    void accumulate_energy_system_loss(double P_system_loss);
-    void accumulate_battery_charge_components(double P_tofrom_batt, double P_pv_to_batt, double P_grid_to_batt);
-    void accumulate_grid_annual(double P_tofrom_grid);
-    void new_year();
+//
+///*! Dispatches the battery in the case where the grid is unavailable */
+//class dispatch_resiliency : public dispatch_interface {
+//public:
+//
+//    explicit dispatch_resiliency(dispatch_automatic_behind_the_meter* orig);
+//
+//    explicit dispatch_resiliency(dispatch_manual_t* orig);
+//
+//protected:
+//    double_vec battery_use;
+//
+//    double_vec load;
+//
+//    double_vec pv_gen;
+//
+//    void init_powerflow();
+//
+//    void set_pv_gen(double_vec pv);
+//
+//    void dispatch(size_t year, size_t hour_of_year, size_t step) override;
+//
+//};
 
 
-    // outputs
-    double energy_pv_charge_annual();
-    double energy_grid_charge_annual();
-    double energy_charge_annual();
-    double energy_discharge_annual();
-    double energy_grid_import_annual();
-    double energy_grid_export_annual();
-    double energy_system_loss_annual();
-    double energy_loss_annual();
-    double average_battery_conversion_efficiency();
-    double average_battery_roundtrip_efficiency();
-    double pv_charge_percent();
-
-protected:
-
-    // single value metrics
-    double _e_charge_accumulated;	 // [Kwh]
-    double _e_discharge_accumulated; // [Kwh]
-    double _e_charge_from_pv;		 // [Kwh]
-    double _e_charge_from_grid;		 // [Kwh]
-    double _e_loss_system;			 // [Kwh]
-
-    /*! Efficiency includes the battery internal efficiency and conversion efficiencies [%] */
-    double _average_efficiency;
-
-    /*! Efficiency includes auxilliary system losses [%] */
-    double _average_roundtrip_efficiency;
-
-    /*! This is the percentage of energy charge from the PV system [%] */
-    double _pv_charge_percent;
-
-    // annual metrics
-    double _e_charge_from_pv_annual;   // [Kwh]
-    double _e_charge_from_grid_annual; // [Kwh]
-    double _e_loss_system_annual;	   // [Kwh]
-    double _e_charge_annual;		   // [Kwh]
-    double _e_discharge_annual;		   // [Kwh]
-    double _e_grid_import_annual;	   // [Kwh]
-    double _e_grid_export_annual;	   // [Kwh]
-    double _e_loss_annual;			   // [kWh]
-
-    double _dt_hour;
-};
-
-
-#endif //SYSTEM_ADVISOR_MODEL_LIB_DISPATCH_H
+#endif

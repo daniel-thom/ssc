@@ -166,6 +166,9 @@ battery_state battery::get_state(){
 
 void battery::run(const storage_time_state& time, double I_guess)
 {
+    if (replacement_params)
+        run_replacement(time);
+
     // Temperature affects capacity, but capacity model can reduce current, which reduces temperature, need to iterate
     double I_initial = I_guess;
     size_t iterate_count = 0;
@@ -193,8 +196,6 @@ void battery::run(const storage_time_state& time, double I_guess)
     run_lifetime_model(time.get_lifetime_index());
     capacity->updateCapacityForLifetime(lifetime->get_capacity_percent());
     run_losses_model(time);
-    if (replacement_params)
-        run_replacement(time);
 }
 
 void battery::change_power(const double P){

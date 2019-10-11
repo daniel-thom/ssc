@@ -107,6 +107,10 @@ public:
     // Compute how battery system to modification of a single state variable
     void change_power(const double P);
 
+    double estimateCycleDamage(){
+        return lifetime->estimateCycleDamage();
+    }
+
     void set_state(const battery_state& state);
     battery_state get_state();
 
