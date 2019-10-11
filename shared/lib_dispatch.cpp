@@ -135,7 +135,6 @@ bool dispatch_interface::check_constraints(double &I, size_t count)
     if (restrict_current(I))
     {
         current_iterate = true;
-    powerflow->run_SOC_controller(target_power);
 
 
     }

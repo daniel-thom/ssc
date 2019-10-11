@@ -20,19 +20,35 @@ size_t step_of_hour = 0;
 
 TEST_F(BatteryDispatchTest, DispatchManual_lib_battery_dispatch)
 {
-	
-	batteryPower = dispatchManual->getBatteryPower();
+	auto batteryPowerOld = dispatchManualOld->getBatteryPower();
+	batteryPowerOld->connectionMode = ChargeController::AC_CONNECTED;
+    batteryPowerOld->powerPV = 1000; batteryPowerOld->voltageSystem = 600;
+    dispatchManualOld->dispatch(year, hour_of_year, step_of_hour);
+
+
+    batteryPower = dispatchManual->getBatteryPower();
 	batteryPower->connectionMode = ChargeController::AC_CONNECTED;
+
+	std::cerr << "\n\n\n";
 
 	// Test max charge power constraint
 	batteryPower->powerPV = 1000; batteryPower->voltageSystem = 600;
 	dispatchManual->dispatch(year, hour_of_year, step_of_hour);
-	EXPECT_NEAR(batteryPower->powerBatteryDC, -powerChargeMax, 2.0);
+	EXPECT_NEAR(batteryPower->powerBatteryDC, batteryPowerOld->powerBatteryDC, 1e-3) << "DispatchManual: 1";
+
+
 
 	// Test max discharge power constraint
-	batteryPower->powerPV = 0; batteryPower->voltageSystem = 600; batteryPower->powerLoad = 1000;
+
+    batteryPowerOld->powerPV = 0; batteryPowerOld->voltageSystem = 600;batteryPowerOld->powerLoad = 1000;
+    dispatchManualOld->dispatch(year, hour_of_year, step_of_hour);
+
+
+    batteryPower->powerPV = 0; batteryPower->voltageSystem = 600; batteryPower->powerLoad = 1000;
 	dispatchManual->dispatch(year, hour_of_year, step_of_hour);
-	EXPECT_NEAR(batteryPower->powerBatteryDC, powerDischargeMax, 2.0);
+
+
+	EXPECT_NEAR(batteryPower->powerBatteryDC, batteryPowerOld->powerBatteryDC, 1e-3) << "DispatchManual: 2";
 
 }
 
