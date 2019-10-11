@@ -806,7 +806,7 @@ battstor::battstor(var_table& vt, bool setup_model, size_t nrec, double dt_hr, b
             batt_vars->batt_length, // [m]
             batt_vars->batt_width, // [m]
             batt_vars->batt_height,
-            batt_vars->batt_resistance, // [m]
+            batt_vars->batt_resistance, // [Ohm]
             batt_vars->batt_Cp, // [J/kgK]
             batt_vars->batt_h_to_ambient, // W/m2K
             batt_vars->T_room, // K
