@@ -80,8 +80,11 @@ public:
             //
         double m_recomp_frac;				//[-] Fraction of flow that bypasses the precooler and the main compressor at the design point
 		double m_eta_mc;					//[-] design-point efficiency of the main compressor; isentropic if positive, polytropic if negative
-		double m_eta_rc;					//[-] design-point efficiency of the recompressor; isentropic if positive, polytropic if negative
+        int m_mc_comp_model_code;           //[-] Main compressor model - see sco2_cycle_components.h 
+        double m_eta_rc;					//[-] design-point efficiency of the recompressor; isentropic if positive, polytropic if negative
+        int m_rc_comp_model_code;           //[-] Recompressor model - see sco2_cycle_components.h 
 		double m_eta_pc;					//[-] design-point efficiency of the pre-compressor; 
+        int m_pc_comp_model_code;           //[-] Precompressor model - see sco2_cycle_components.h 
 		double m_eta_t;						//[-] design-point efficiency of the turbine; isentropic if positive, polytropic if negative
 		int m_N_sub_hxrs;					//[-] Number of sub-heat exchangers to use when calculating UA value for a heat exchanger
 		double m_P_high_limit;				//[kPa] maximum allowable pressure in cycle
@@ -111,6 +114,11 @@ public:
 
 			// Air cooler default
 			m_is_des_air_cooler = true;
+
+            // Compressor model codes
+            m_mc_comp_model_code = C_comp__psi_eta_vs_phi::E_snl_radial_via_Dyreby;
+            m_rc_comp_model_code = C_comp__psi_eta_vs_phi::E_snl_radial_via_Dyreby;
+            m_pc_comp_model_code = C_comp__psi_eta_vs_phi::E_snl_radial_via_Dyreby;
 
             // Recuperator design target codes
             m_LTR_target_code = 1;      // default to target conductance
@@ -267,6 +275,8 @@ private:
 	double m_eta_thermal_od;
 	double m_W_dot_net_od;
 	double m_Q_dot_PHX_od;
+    double m_Q_dot_mc_cooler_od;
+    double m_Q_dot_pc_cooler_od;
 
 	int design_core();
 
@@ -293,7 +303,8 @@ public:
 		m_objective_metric_last = m_objective_metric_opt = m_objective_metric_auto_opt = std::numeric_limits<double>::quiet_NaN();
 
 		mv_temp_od = mv_pres_od = mv_enth_od = mv_entr_od = mv_dens_od = m_temp_last;
-		m_eta_thermal_od = m_W_dot_net_od = m_Q_dot_PHX_od = std::numeric_limits<double>::quiet_NaN();
+		m_eta_thermal_od = m_W_dot_net_od = m_Q_dot_PHX_od =
+        m_Q_dot_mc_cooler_od = m_Q_dot_pc_cooler_od = std::numeric_limits<double>::quiet_NaN();
 	}
 
 	class C_MEQ__f_recomp__y_N_rc : public C_monotonic_equation
@@ -462,7 +473,14 @@ public:
 
 	int off_design_fix_shaft_speeds(S_od_par & od_phi_par_in);
 
-	int calculate_off_design_fan_power(double T_amb /*K*/, double & W_dot_fan /*MWe*/);
+    virtual void check_od_solution(double & diff_m_dot, double & diff_E_cycle,
+        double & diff_Q_LTR, double & diff_Q_HTR);
+
+	virtual int solve_OD_all_coolers_fan_power(double T_amb /*K*/, double & W_dot_fan /*MWe*/);
+
+    virtual int solve_OD_mc_cooler_fan_power(double T_amb /*K*/, double & W_dot_mc_cooler_fan /*MWe*/);
+
+    virtual int solve_OD_pc_cooler_fan_power(double T_amb /*K*/, double & W_dot_pc_cooler_fan /*MWe*/);
 
 	// Called by 'nlopt_callback_opt_des_1', so needs to be public
 	double design_cycle_return_objective_metric(const std::vector<double> &x);

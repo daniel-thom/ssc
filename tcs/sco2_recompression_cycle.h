@@ -82,8 +82,10 @@ public:
 		    //
         double m_recomp_frac;				//[-] Fraction of flow that bypasses the precooler and the main compressor at the design point
 		double m_eta_mc;					//[-] design-point efficiency of the main compressor; isentropic if positive, polytropic if negative
-		double m_eta_rc;					//[-] design-point efficiency of the recompressor; isentropic if positive, polytropic if negative
-		double m_eta_t;						//[-] design-point efficiency of the turbine; isentropic if positive, polytropic if negative
+        int m_mc_comp_model_code;           //[-] Main compressor model - see sco2_cycle_components.h 
+        double m_eta_rc;					//[-] design-point efficiency of the recompressor; isentropic if positive, polytropic if negative
+        int m_rc_comp_model_code;           //[-] Recompressor model - see sco2_cycle_components.h 
+        double m_eta_t;						//[-] design-point efficiency of the turbine; isentropic if positive, polytropic if negative
 		int m_N_sub_hxrs;					//[-] Number of sub-heat exchangers to use when calculating UA value for a heat exchanger
 		double m_P_high_limit;				//[kPa] maximum allowable pressure in cycle
 		double m_tol;						//[-] Convergence tolerance
@@ -108,6 +110,10 @@ public:
 				m_eta_mc = m_eta_rc = m_eta_t = m_P_high_limit = m_tol = m_N_turbine =
 				m_frac_fan_power = m_deltaP_cooler_frac = m_T_amb_des = m_elevation = std::numeric_limits<double>::quiet_NaN();
 			m_N_sub_hxrs = -1;
+
+            // Compressor model codes
+            m_mc_comp_model_code = C_comp__psi_eta_vs_phi::E_snl_radial_via_Dyreby;
+            m_rc_comp_model_code = C_comp__psi_eta_vs_phi::E_snl_radial_via_Dyreby;
 
             // Recuperator design target codes
             m_LTR_target_code = 1;      // default to target conductance
@@ -461,6 +467,7 @@ private:
 	double m_eta_thermal_od;
 	double m_W_dot_net_od;
 	double m_Q_dot_PHX_od;
+    double m_Q_dot_mc_cooler_od;    //[MWt]
 
 		// Structures and data for off-design optimization
 	S_od_parameters ms_od_par_optimal;
@@ -525,7 +532,7 @@ public:
 
 		m_temp_od = m_pres_od = m_enth_od = m_entr_od = m_dens_od = m_temp_last;
 
-		m_eta_thermal_od = m_W_dot_net_od = m_Q_dot_PHX_od = std::numeric_limits<double>::quiet_NaN();
+		m_eta_thermal_od = m_W_dot_net_od = m_Q_dot_PHX_od = m_Q_dot_mc_cooler_od = std::numeric_limits<double>::quiet_NaN();
 
 		m_W_dot_net_max = m_eta_best = m_biggest_target = std::numeric_limits<double>::quiet_NaN();
 
@@ -571,7 +578,11 @@ public:
 
 	int off_design_fix_shaft_speeds(S_od_par & od_phi_par_in);
 
-	int calculate_off_design_fan_power(double T_amb /*K*/, double & W_dot_fan /*MWe*/);
+	virtual int solve_OD_all_coolers_fan_power(double T_amb /*K*/, double & W_dot_fan /*MWe*/);
+
+    virtual int solve_OD_mc_cooler_fan_power(double T_amb /*K*/, double & W_dot_mc_cooler_fan /*MWe*/);
+
+    virtual int solve_OD_pc_cooler_fan_power(double T_amb /*K*/, double & W_dot_pc_cooler_fan /*MWe*/);
 
 	//void optimal_off_design(S_opt_od_parameters & opt_od_par_in, int & error_code);
 	
@@ -589,6 +600,9 @@ public:
 
 	double get_od_pres(int n_state_point);
 	
+    virtual void check_od_solution(double & diff_m_dot, double & diff_E_cycle,
+        double & diff_Q_LTR, double & diff_Q_HTR);
+
 	void set_od_temp(int n_state_point, double temp_K);
 
 	void set_od_pres(int n_state_point, double pres_kPa);
@@ -629,20 +643,26 @@ public:
 		double m_P_mc_in;		//[kPa] Compressor inlet pressure
 		double m_T_t_in;		//[K] Turbine inlet temperature
 
+        double m_f_mc_bypass;   //[-] Fraction of main compressor bypassed to cooler
+
 	public:
 		
 		double m_m_dot_t;		//[kg/s]
 		double m_m_dot_rc;		//[kg/s]
 		double m_m_dot_mc;		//[kg/s]
+        double m_m_dot_LTR_HP;  //[kg/s]
 
-		C_mono_eq_x_f_recomp_y_N_rc(C_RecompCycle *pc_rc_cycle, double T_mc_in /*K*/, double P_mc_in /*kPa*/, double T_t_in /*K*/)
+		C_mono_eq_x_f_recomp_y_N_rc(C_RecompCycle *pc_rc_cycle, double T_mc_in /*K*/, 
+            double P_mc_in /*kPa*/, double T_t_in /*K*/,
+            double f_mc_bypass)
 		{
 			mpc_rc_cycle = pc_rc_cycle;
 			m_T_mc_in = T_mc_in;		//[K]
 			m_P_mc_in = P_mc_in;		//[kPa]
 			m_T_t_in = T_t_in;			//[K]
+            m_f_mc_bypass = f_mc_bypass;    //[-]
 
-			m_m_dot_t = m_m_dot_rc = m_m_dot_mc = std::numeric_limits<double>::quiet_NaN();
+			m_m_dot_t = m_m_dot_rc = m_m_dot_mc = m_m_dot_LTR_HP = std::numeric_limits<double>::quiet_NaN();
 		}
 
 		virtual int operator()(double f_recomp /*-*/, double *N_rc /*rpm*/);
@@ -660,12 +680,16 @@ public:
 		double m_f_recomp;		//[-] Recompression fraction
 		double m_T_t_in;		//[K] Turbine inlet temperature
 
+        double m_f_mc_bypass;   //[-] Fraction of main compressor bypassed to cooler
+
 		bool m_is_update_ms_od_solved;	//[-] Bool to update member structure ms_od_solved
 		// that is typically updated after entire cycle off-design solution 
 
 	public:
 		C_mono_eq_turbo_N_fixed_m_dot(C_RecompCycle *pc_rc_cycle, double T_mc_in /*K*/, double P_mc_in /*kPa*/,
-			double f_recomp /*-*/, double T_t_in /*K*/, bool is_update_ms_od_solved = false)
+			double f_recomp /*-*/, double T_t_in /*K*/, 
+            double f_mc_bypass /*-*/,
+            bool is_update_ms_od_solved = false)
 		{
 			mpc_rc_cycle = pc_rc_cycle;
 			m_T_mc_in = T_mc_in;			//[K]
@@ -673,8 +697,15 @@ public:
 			m_f_recomp = f_recomp;			//[-]
 			m_T_t_in = T_t_in;				//[K]
 
+            m_f_mc_bypass = f_mc_bypass;    //[-]
+
 			m_is_update_ms_od_solved = is_update_ms_od_solved;
+
+            m_m_dot_mc = m_m_dot_LTR_HP = std::numeric_limits<double>::quiet_NaN();
 		}
+
+        double m_m_dot_mc;      //[kg/s]
+        double m_m_dot_LTR_HP;  //[kg/s]
 
 		virtual int operator()(double m_dot_t /*kg/s*/, double *diff_m_dot_t /*-*/);
 
@@ -721,11 +752,11 @@ public:
 		C_RecompCycle *mpc_rc_cycle;
 
 	public:
-		C_mono_eq_LTR_od(C_RecompCycle *pc_rc_cycle, double m_dot_rc, double m_dot_mc, double m_dot_t)
+		C_mono_eq_LTR_od(C_RecompCycle *pc_rc_cycle, double m_dot_rc, double m_dot_LTR_HP, double m_dot_t)
 		{
 			mpc_rc_cycle = pc_rc_cycle;
 			m_m_dot_rc = m_dot_rc;
-			m_m_dot_mc = m_dot_mc;
+            m_m_dot_LTR_HP = m_dot_LTR_HP;  //[kg/s]
 			m_m_dot_t = m_dot_t;
 		}	
 		
@@ -734,7 +765,7 @@ public:
 		double m_Q_dot_LTR;
 
 		// These values are passed in as arguments to Constructor call and should not be reset
-		double m_m_dot_rc, m_m_dot_mc, m_m_dot_t;
+		double m_m_dot_rc, m_m_dot_LTR_HP, m_m_dot_t;
 
 		virtual int operator()(double T_LTR_LP_out /*K*/, double *diff_T_LTR_LP_out /*K*/);
 	};
@@ -768,16 +799,16 @@ public:
 		C_RecompCycle *mpc_rc_cycle;
 
 	public:
-		C_mono_eq_HTR_od(C_RecompCycle *pc_rc_cycle, double m_dot_rc, double m_dot_mc, double m_dot_t)
+		C_mono_eq_HTR_od(C_RecompCycle *pc_rc_cycle, double m_dot_rc, double m_dot_LTR_HP, double m_dot_t)
 		{
 			mpc_rc_cycle = pc_rc_cycle;
 			m_m_dot_rc = m_dot_rc;
-			m_m_dot_mc = m_dot_mc;
+            m_m_dot_LTR_HP = m_dot_LTR_HP;  //[kg/s]
 			m_m_dot_t = m_dot_t;
 		}
 	
 		// These values are passed in as arguments to Constructor call and should not be reset
-		double m_m_dot_rc, m_m_dot_mc, m_m_dot_t;
+		double m_m_dot_rc, m_m_dot_LTR_HP, m_m_dot_t;
 
 		// These values are calculated in the operator() method and need to be extracted from this class
 		//     after convergence

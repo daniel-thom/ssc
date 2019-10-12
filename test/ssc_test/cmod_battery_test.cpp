@@ -5,8 +5,8 @@
 #include "cmod_battery_test.h"
 
 
-/// Test standalone battery compute module with an input lifetime generation and commercial load
-TEST_F(CMBattery, CommercialLifetimePeakShaving) {
+/// Test standalone battery compute modeule with a input lifetime generation and commercial load
+TEST_F(CMBattery, CommercialLifetimePeakShaving_cmod_battery) {
 
 	// Run with fixed output
 	ssc_number_t n_years;
@@ -21,7 +21,7 @@ TEST_F(CMBattery, CommercialLifetimePeakShaving) {
 		// roundtrip efficiency test will ensure that the battery cycled
 		ssc_number_t roundtripEfficiency;
 		ssc_data_get_number(data, "average_battery_roundtrip_efficiency", &roundtripEfficiency);
-		EXPECT_NEAR(roundtripEfficiency, 94.129, 2);
+		EXPECT_NEAR(roundtripEfficiency, 90.06, 2);
 
 		// test that lifetime output is achieved
 		int n;
