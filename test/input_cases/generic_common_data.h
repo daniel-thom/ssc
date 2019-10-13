@@ -404,6 +404,7 @@ void generic_singleowner_battery_60min(ssc_data_t &data)
     ssc_data_set_array(data, "cp_capacity_payment_amount", p_depr_custom_schedule, 1);
     ssc_data_set_array(data, "cp_capacity_credit_percent", p_depr_custom_schedule, 1);
     ssc_data_set_number(data, "cp_system_nameplate", 0);
+    ssc_data_set_number(data, "cp_battery_nameplate", 0);
 }
 
 void generic_commerical_battery_60min(ssc_data_t &data)

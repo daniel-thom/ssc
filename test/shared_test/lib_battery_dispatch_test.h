@@ -95,7 +95,7 @@ struct DispatchProperties
 * Test various components of the battery dispatch algorithms
 *
 */
-class BatteryDispatchTest : public BatteryProperties , public DispatchProperties
+class BatteryDispatchTest_lib_battery_dispatch : public BatteryProperties , public DispatchProperties
 {
 protected:
 
@@ -248,7 +248,7 @@ public:
         auto voltageDC = std::shared_ptr<battery_voltage_params>(new battery_voltage_params(
                 {139, 133227, 3.6, resistance, battery_voltage_params::MODEL, 4.10, 4.05, 3.4, 2.25, 0.04, 2.00, C_rate }));
         auto lossDC = std::shared_ptr<battery_losses_params>(new battery_losses_params({
-            timeFOM, battery_losses_params::MONTHLY, double_vec(), double_vec(), double_vec(), double_vec()}));
+            timeFOM, battery_losses_params::TIMESERIES, double_vec(), double_vec(), double_vec(), fullLosses}));
 
         auto thermalDC = std::shared_ptr<const battery_thermal_params>(new battery_thermal_params(
                 {timeDC, 760149, 17.3*17.3*6, 0.02, Cp, capacityVsTemperatureNew, 20, T_room}));

@@ -46,7 +46,7 @@ void single_year_to_lifetime_interpolated(
 	T interpolation_factor = (T)step_per_hour / (T)step_per_hour_singleyear_input;
 
 	// Possible that there is no single year vector
-	if (singleyear_vector.size() == n_rec_single_year)
+	if (singleyear_vector.size() > 1)
 	{
 		// Interpolate single year vector to dt_hour
 		std::vector<T> singleyear_sampled;
@@ -89,8 +89,6 @@ void single_year_to_lifetime_interpolated(
 	    for (size_t i = 0; i < n_rec_lifetime; i++)
 	        lifetime_from_singleyear_vector.emplace_back(lifetime_from_singleyear_vector[0]);
 	}
-	else
-	    throw std::runtime_error("single_year_to_lifetime_interpolated error: Single year input array length not 0, 1 or n_recs." );
 }
 
 template void single_year_to_lifetime_interpolated<double>(bool, size_t, size_t,std::vector<double>, std::vector<double> &, size_t &, double &);
