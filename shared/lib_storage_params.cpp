@@ -114,11 +114,11 @@ void battery_losses_params::initialize_from_data(var_table &vt, storage_time_par
 
     switch (mode){
         case MONTHLY: {
-            if (!(losses_charging.size() == 1 || losses_charging.size() == 12))
+            if (!(charging.size() == 1 || charging.size() == 12))
                 throw general_error("charging loss length must be 1 or 12 for monthly input mode");
-            if (!(losses_discharging.size() == 1 || losses_discharging.size() == 12))
+            if (!(discharging.size() == 1 || discharging.size() == 12))
                 throw general_error("discharging loss length must be 1 or 12 for monthly input mode");
-            if (!(losses_idle.size() == 1 || losses_idle.size() == 12))
+            if (!(idle.size() == 1 || idle.size() == 12))
                 throw general_error("idle loss length must be 1 or 12 for monthly input mode");
 
             std::vector<double>* source[3] = {&charging, &discharging, &idle};
