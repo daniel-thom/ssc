@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <gtest/gtest.h>
 
 #include "cmod_pvsamv1_test.h"
@@ -5,7 +6,7 @@
 #include "../input_cases/weather_inputs.h"
 
 /// Test PVSAMv1 with all defaults and no-financial model
-TEST_F(CMPvsamv1PowerIntegration, DefaultNoFinancialModel_cmod_pvsamv1){
+TEST_F(CMPvsamv1_cmod_pvsamv1, DefaultNoFinancialModel){
 	
 	int pvsam_errors = run_module(data, "pvsamv1");
 
@@ -31,7 +32,7 @@ TEST_F(CMPvsamv1PowerIntegration, DefaultNoFinancialModel_cmod_pvsamv1){
 }
 
 /// Run PVSAMv1 with all defaults and lifetime mode for no-financial model
-TEST_F(CMPvsamv1PowerIntegration, DefaultLifetimeNoFinancialModel_cmod_pvsamv1) {
+TEST_F(CMPvsamv1_cmod_pvsamv1, DefaultLifetimeNoFinancialModel) {
 
 	std::map<std::string, double> pairs;
 	pairs["system_use_lifetime_output"] = 1;
@@ -69,7 +70,7 @@ TEST_F(CMPvsamv1PowerIntegration, DefaultLifetimeNoFinancialModel_cmod_pvsamv1) 
 
 
 /// Test PVSAMv1 with all defaults and residential financial model
-TEST_F(CMPvsamv1PowerIntegration, DefaultResidentialModel_cmod_pvsamv1)
+TEST_F(CMPvsamv1_cmod_pvsamv1, DefaultResidentialModel)
 {
 
 	ssc_data_t data = ssc_data_create();
@@ -141,7 +142,7 @@ TEST_F(CMPvsamv1PowerIntegration, DefaultResidentialModel_cmod_pvsamv1)
 }
 
 /// Test PVSAMv1 with default no-financial model and a 15-minute weather file 
-TEST_F(CMPvsamv1PowerIntegration, NoFinancialModelCustomWeatherFile_cmod_pvsamv1) {
+TEST_F(CMPvsamv1_cmod_pvsamv1, NoFinancialModelCustomWeatherFile) {
 
 	std::map<std::string, std::string> pairs; 
 	pairs["solar_resource_file"] = solar_resource_path_15_min;
@@ -170,7 +171,7 @@ TEST_F(CMPvsamv1PowerIntegration, NoFinancialModelCustomWeatherFile_cmod_pvsamv1
 }
 
 /// Test PVSAMv1 with default no-financial model and combinations of Sky Diffuse Model and Weather File Irradiance
-TEST_F(CMPvsamv1PowerIntegration, NoFinancialModelSkyDiffuseAndIrradModels_cmod_pvsamv1)
+TEST_F(CMPvsamv1_cmod_pvsamv1, NoFinancialModelSkyDiffuseAndIrradModels)
 {
 	std::vector<double> annual_energy_expected = { 8513, 8522, 8525, 8635, 8645, 8647, 8714, 8723, 8726, 7623, 7300};
 	std::map<std::string, double> pairs;
@@ -218,7 +219,7 @@ TEST_F(CMPvsamv1PowerIntegration, NoFinancialModelSkyDiffuseAndIrradModels_cmod_
 }
 	
 /// Test PVSAMv1 with default no-financial model and combinations of module and inverter models
-TEST_F(CMPvsamv1PowerIntegration, NoFinancialModelModuleAndInverterModels_cmod_pvsamv1)
+TEST_F(CMPvsamv1_cmod_pvsamv1, NoFinancialModelModuleAndInverterModels)
 {
 	std::vector<double> annual_energy_expected = { 2518, 2548, 2476, 2518, 8714, 8694, 8661, 8714, 54, 57, 60, 54, 5405, 5400, 5347, 5404, 1767, 1807, 1736, 1767};
 	std::map<std::string, double> pairs;
@@ -248,7 +249,7 @@ TEST_F(CMPvsamv1PowerIntegration, NoFinancialModelModuleAndInverterModels_cmod_p
 
 /// Test PVSAMv1 with default no-financial model and combinations of module thermal, spectral, and reflection models
 //This test can be expanded when we allow different combinations of thermal, spectral, and reflection models with different module models 
-TEST_F(CMPvsamv1PowerIntegration, NoFinancialModelModuleThermalSpectralReflection_cmod_pvsamv1)
+TEST_F(CMPvsamv1_cmod_pvsamv1, NoFinancialModelModuleThermalSpectralReflection)
 {
 	std::vector<double> annual_energy_expected = { 8714, 8749 };
 	std::map<std::string, double> pairs;
@@ -272,7 +273,7 @@ TEST_F(CMPvsamv1PowerIntegration, NoFinancialModelModuleThermalSpectralReflectio
 }
 
 /// Test PVSAMv1 with default no-financial model and sytem design page changes
-TEST_F(CMPvsamv1PowerIntegration, NoFinancialModelSystemDesign_cmod_pvsamv1)
+TEST_F(CMPvsamv1_cmod_pvsamv1, NoFinancialModelSystemDesign)
 {
 	pvsamv_nofinancial_default(data);
 
@@ -385,7 +386,7 @@ TEST_F(CMPvsamv1PowerIntegration, NoFinancialModelSystemDesign_cmod_pvsamv1)
 }
 
 /// Test PVSAMv1 with default no-financial model and different shading options
-TEST_F(CMPvsamv1PowerIntegration, NoFinancialModelShading_cmod_pvsamv1)
+TEST_F(CMPvsamv1_cmod_pvsamv1, NoFinancialModelShading)
 {
 	// 0: No Shading, 1: 3D Shading, 2: 3D shading with self shading (non-linear), 3: Snow
 // PR 280	std::vector<double> annual_energy_expected = { 12911, 10607, 10579, 10377 };
@@ -473,7 +474,7 @@ TEST_F(CMPvsamv1PowerIntegration, NoFinancialModelShading_cmod_pvsamv1)
 }
 
 /// Test PVSAMv1 with default no-financial model and different loss options
-TEST_F(CMPvsamv1PowerIntegration, NoFinancialModelLosses_cmod_pvsamv1)
+TEST_F(CMPvsamv1_cmod_pvsamv1, NoFinancialModelLosses)
 {
 	// 0: Default Losses, 1: Modify Point Losses, 2: Modify Availability
 	std::vector<double> annual_energy_expected = { 8714, 7874, 7607 };
@@ -524,7 +525,7 @@ TEST_F(CMPvsamv1PowerIntegration, NoFinancialModelLosses_cmod_pvsamv1)
 
 /// Change half of all temperatures so that inv eff is derated by ~50% for half the year
 /// DC production & inverter efficiency both decrease as result
-TEST_F(CMPvsamv1PowerIntegration, InvTempDerate_cmod_pvsamv1) {
+TEST_F(CMPvsamv1_cmod_pvsamv1, InvTempDerate) {
 	var_data* weatherData = create_weatherdata_array(1);
 	ssc_data_unassign(data, "solar_resource_file");
 	var_table *vt = static_cast<var_table*>(data);
@@ -563,7 +564,7 @@ TEST_F(CMPvsamv1PowerIntegration, InvTempDerate_cmod_pvsamv1) {
 }
 
 /// Test PVSAMv1 multiple MPPT inverter, otherwise using default no financial model inputs
-TEST_F(CMPvsamv1PowerIntegration, NoFinancialModelMultipleMPPT_cmod_pvsamv1)
+TEST_F(CMPvsamv1_cmod_pvsamv1, NoFinancialModelMultipleMPPT)
 {
 	std::vector<double> annual_energy_expected = { 7633 };
 	std::map<std::string, double> pairs;
@@ -592,7 +593,7 @@ TEST_F(CMPvsamv1PowerIntegration, NoFinancialModelMultipleMPPT_cmod_pvsamv1)
 }
 
 /// Test PVSAMv1 with Snow Model enabled and set to 1-axis Tracking
-TEST_F(CMPvsamv1PowerIntegration, SnowModel_cmod_pvsamv1)
+TEST_F(CMPvsamv1_cmod_pvsamv1, SnowModel)
 {
 	std::map<std::string, double> pairs;
 
@@ -605,4 +606,312 @@ TEST_F(CMPvsamv1PowerIntegration, SnowModel_cmod_pvsamv1)
 	ssc_data_get_number(data, "annual_energy", &annual_energy);
 	EXPECT_NEAR(annual_energy, 11354.7, m_error_tolerance_hi) << "Annual energy.";
 
+}
+
+/// Test with battery enabled
+TEST_F(CMPvsamv1_cmod_pvsamv1, DcCoupledBatteryPeakShavingAhead) {
+    // passing
+    pvbatt_default(data);
+
+    ssc_data_set_number(data, "en_batt", 1);
+    ssc_data_set_number(data, "batt_ac_or_dc", 0);
+
+    // peak shaving look ahead
+    ssc_data_set_number(data, "batt_dispatch_choice", 0);
+    int pvsam_errors = run_module(data, "pvsamv1");
+
+    EXPECT_FALSE(pvsam_errors);
+    GetBatteryOutputs();
+
+    EXPECT_NEAR(batt_capacity_percent_total, 869351.37, m_error_tolerance_hi) << "Dc-coupled peak-shaving look ahead";
+    EXPECT_NEAR(batt_cycles_total, 1576151, m_error_tolerance_hi) << "Dc-coupled peak-shaving look ahead";
+    EXPECT_NEAR(batt_power_total, -173.38, m_error_tolerance_lo) << "Dc-coupled peak-shaving look ahead";
+    EXPECT_NEAR(grid_power_total, 2606.89, m_error_tolerance_lo) << "Dc-coupled peak-shaving look ahead";
+    EXPECT_NEAR(batt_to_load_total, 1260.36, m_error_tolerance_lo) << "Dc-coupled peak-shaving look ahead";
+    EXPECT_NEAR(pv_to_batt_total, 1433.74, m_error_tolerance_lo) << "Dc-coupled peak-shaving look ahead";
+    EXPECT_NEAR(batt_system_loss, 0, m_error_tolerance_lo) << "Dc-coupled peak-shaving look ahead";
+    EXPECT_NEAR(average_battery_roundtrip_efficiency, 87.89, m_error_tolerance_lo) << "Dc-coupled peak-shaving look ahead";
+    EXPECT_NEAR(batt_pv_charge_percent, 99.99, m_error_tolerance_lo) << "Dc-coupled peak-shaving look ahead";
+}
+
+TEST_F(CMPvsamv1_cmod_pvsamv1, DcCoupledBatteryPeakShavingBehind) {
+    // passing
+    pvbatt_default(data);
+
+    ssc_data_set_number(data, "en_batt", 1);
+    ssc_data_set_number(data, "batt_ac_or_dc", 0);
+
+    // peak shaving look behind
+    ssc_data_set_number(data, "batt_dispatch_choice", 1);
+    int pvsam_errors = run_module(data, "pvsamv1");
+
+    EXPECT_FALSE(pvsam_errors);
+    GetBatteryOutputs();
+
+    EXPECT_NEAR(batt_capacity_percent_total, 869189.42, m_error_tolerance_hi) << "Dc-coupled peak-shaving look behind";
+    EXPECT_NEAR(batt_cycles_total, 1563048, m_error_tolerance_lo) << "Dc-coupled peak-shaving look behind";
+    EXPECT_NEAR(batt_power_total, -173.25, m_error_tolerance_lo) << "Dc-coupled peak-shaving look behind";
+    EXPECT_NEAR(grid_power_total, 2607.94, m_error_tolerance_lo) << "Dc-coupled peak-shaving look behind";
+    EXPECT_NEAR(batt_to_load_total, 1258.04, m_error_tolerance_lo) << "Dc-coupled peak-shaving look behind";
+    EXPECT_NEAR(pv_to_batt_total, 1432.30, m_error_tolerance_lo) << "Dc-coupled peak-shaving look behind";
+    EXPECT_NEAR(batt_system_loss, 0, m_error_tolerance_lo) << "Dc-coupled peak-shaving look behind";
+    EXPECT_NEAR(average_battery_roundtrip_efficiency, 87.89, m_error_tolerance_lo) << "Dc-coupled peak-shaving look behind";
+    EXPECT_NEAR(batt_pv_charge_percent, 100, m_error_tolerance_lo) << "Dc-coupled peak-shaving look behind";
+}
+
+TEST_F(CMPvsamv1_cmod_pvsamv1, DcCoupledBatteryGridTarget) {
+    pvbatt_default(data);
+
+    ssc_data_set_number(data, "batt_ac_or_dc", 0);
+
+    // InputGridTarget
+    ssc_data_set_number(data, "batt_dispatch_choice", 2);
+    int pvsam_errors = run_module(data, "pvsamv1");
+
+    EXPECT_FALSE(pvsam_errors);
+    GetBatteryOutputs();
+
+    EXPECT_NEAR(batt_capacity_percent_total, 145866.33, m_error_tolerance_lo) << "Dc-coupled InputGridTarget";
+    EXPECT_NEAR(batt_cycles_total, 111480, m_error_tolerance_lo) << "Dc-coupled InputGridTarget";
+    EXPECT_NEAR(batt_power_total, -44.73, m_error_tolerance_lo) << "Dc-coupled InputGridTarget";
+    EXPECT_NEAR(grid_power_total, 656.55, m_error_tolerance_lo) << "Dc-coupled InputGridTarget";
+    EXPECT_NEAR(batt_to_load_total, 8.57, m_error_tolerance_lo) << "Dc-coupled InputGridTarget";
+    EXPECT_NEAR(pv_to_batt_total, 2.62, m_error_tolerance_lo) << "Dc-coupled InputGridTarget";
+    EXPECT_NEAR(batt_system_loss, 0, m_error_tolerance_lo) << "Dc-coupled InputGridTarget";
+    EXPECT_NEAR(average_battery_roundtrip_efficiency, 86.89, m_error_tolerance_lo) << "Dc-coupled InputGridTarget";
+    EXPECT_NEAR(batt_pv_charge_percent, 99.99, m_error_tolerance_lo) << "Dc-coupled InputGridTarget";
+}
+
+TEST_F(CMPvsamv1_cmod_pvsamv1, DcCoupledBatteryPowerTarget) {
+    pvbatt_default(data);
+
+    ssc_data_set_number(data, "en_batt", 1);
+    ssc_data_set_number(data, "batt_ac_or_dc", 0);
+
+    // InputBatteryPower
+    ssc_data_set_number(data, "batt_dispatch_choice", 3);
+    double dispatch[8760] = {1};
+    ssc_data_set_array(data, "batt_custom_dispatch", dispatch, 8760);
+    int pvsam_errors = run_module(data, "pvsamv1");
+
+    EXPECT_FALSE(pvsam_errors);
+    GetBatteryOutputs();
+
+    EXPECT_NEAR(batt_capacity_percent_total, 146000, m_error_tolerance_hi) << "Dc-coupled InputBatteryPower";
+    EXPECT_NEAR(batt_cycles_total, 0, m_error_tolerance_lo) << "Dc-coupled InputBatteryPower";
+    EXPECT_NEAR(batt_power_total, 0, m_error_tolerance_lo) << "Dc-coupled InputBatteryPower";
+    EXPECT_NEAR(grid_power_total, 649.78, m_error_tolerance_lo) << "Dc-coupled InputBatteryPower";
+    EXPECT_NEAR(batt_to_load_total, 0, m_error_tolerance_lo) << "Dc-coupled InputBatteryPower";
+    EXPECT_NEAR(pv_to_batt_total, 0, m_error_tolerance_lo) << "Dc-coupled InputBatteryPower";
+    EXPECT_NEAR(batt_system_loss, 0, m_error_tolerance_lo) << "Dc-coupled InputBatteryPower";
+    EXPECT_NEAR(average_battery_roundtrip_efficiency, 100, m_error_tolerance_lo) << "Dc-coupled InputBatteryPower";
+    EXPECT_NEAR(batt_pv_charge_percent, 100, m_error_tolerance_lo) << "Dc-coupled InputBatteryPower";
+}
+
+TEST_F(CMPvsamv1_cmod_pvsamv1, DcCoupledBatteryManual) {
+    // passing
+    pvbatt_default(data);
+
+
+    ssc_data_set_number(data, "en_batt", 1);
+    ssc_data_set_number(data, "batt_ac_or_dc", 0);
+
+    // Manual
+    ssc_data_set_number(data, "batt_dispatch_choice", 4);
+    double manual_charge[6] = {1, 1, 0, 0, 0, 0};
+    ssc_data_set_array(data, "dispatch_manual_charge", manual_charge, 6);
+    double manual_discharge[6] = {0, 0, 1, 0, 0, 0};
+    ssc_data_set_array(data, "dispatch_manual_discharge", manual_discharge, 6);
+    double manual_gridcharge[6] = {1, 0, 0, 0, 0, 0};
+    ssc_data_set_array(data, "dispatch_manual_gridcharge", manual_gridcharge, 6);
+    double manual_percent_discharge[6] = {1, 0, 0, 0, 0, 0};
+    ssc_data_set_array(data, "dispatch_manual_percent_discharge", manual_percent_discharge, 6);
+    double manual_percent_gridcharge[6] = {100, 0, 0, 0, 0, 0};
+    ssc_data_set_array(data, "dispatch_manual_percent_gridcharge", manual_percent_gridcharge, 6);
+    double dispatch_manual_sched [12*24] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 3, 3, 1, 1, 1, 1,
+                                            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 3, 3, 1, 1, 1, 1,
+                                            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 3, 3, 1, 1, 1, 1,
+                                            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 3, 3, 1, 1, 1, 1,
+                                            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 3, 3, 1, 1, 1, 1,
+                                            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 3, 3, 1, 1, 1, 1,
+                                            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 3, 3, 1, 1, 1, 1,
+                                            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 3, 3, 1, 1, 1, 1,
+                                            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 3, 3, 1, 1, 1, 1,
+                                            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 3, 3, 1, 1, 1, 1,
+                                            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 3, 3, 1, 1, 1, 1,
+                                            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 3, 3, 1, 1, 1, 1};
+    ssc_data_set_matrix(data, "dispatch_manual_sched", dispatch_manual_sched, 12, 24);
+    ssc_data_set_matrix(data, "dispatch_manual_sched_weekend", dispatch_manual_sched, 12, 24);
+    int pvsam_errors = run_module(data, "pvsamv1");
+
+    EXPECT_FALSE(pvsam_errors);
+    GetBatteryOutputs();
+
+    EXPECT_NEAR(batt_capacity_percent_total, 875697.16, m_error_tolerance_lo) << "Dc-coupled Manual";
+    EXPECT_NEAR(batt_cycles_total, 1507377, m_error_tolerance_lo) << "Dc-coupled Manual";
+    EXPECT_NEAR(batt_power_total, -81.53, m_error_tolerance_lo) << "Dc-coupled Manual";
+    EXPECT_NEAR(grid_power_total, 2666.08, m_error_tolerance_lo) << "Dc-coupled Manual";
+    EXPECT_NEAR(batt_to_load_total, 106.20, m_error_tolerance_lo) << "Dc-coupled Manual";
+    EXPECT_NEAR(pv_to_batt_total, 66.97, m_error_tolerance_lo) << "Dc-coupled Manual";
+    EXPECT_NEAR(batt_system_loss, 0, m_error_tolerance_lo) << "Dc-coupled Manual";
+    EXPECT_NEAR(average_battery_roundtrip_efficiency, 56.57, m_error_tolerance_lo) << "Dc-coupled Manual";
+    EXPECT_NEAR(batt_pv_charge_percent, 35.67, m_error_tolerance_lo) << "Dc-coupled Manual";
+}
+
+
+TEST_F(CMPvsamv1_cmod_pvsamv1, AcCoupledBatteryLookAhead) {
+    // passing
+    pvbatt_default(data);
+
+
+    ssc_data_set_number(data, "en_batt", 1);
+    ssc_data_set_number(data, "batt_ac_or_dc", 1);
+
+    // peak shaving look ahead
+    ssc_data_set_number(data, "batt_dispatch_choice", 0);
+    int pvsam_errors = run_module(data, "pvsamv1");
+
+    EXPECT_FALSE(pvsam_errors);
+    GetBatteryOutputs();
+
+    EXPECT_NEAR(batt_capacity_percent_total, 869277.80, m_error_tolerance_hi) << "Ac-coupled look ahead";
+    EXPECT_NEAR(batt_cycles_total, 1809744, m_error_tolerance_hi) << "Ac-coupled look ahead";
+    EXPECT_NEAR(batt_power_total, -147.02, m_error_tolerance_lo) << "Ac-coupled look ahead";
+    EXPECT_NEAR(grid_power_total, 2589.66, m_error_tolerance_lo) << "Ac-coupled look ahead";
+    EXPECT_NEAR(batt_to_load_total, 1327.29, m_error_tolerance_lo) << "Ac-coupled look ahead";
+    EXPECT_NEAR(pv_to_batt_total, 1474.28, m_error_tolerance_lo) << "Ac-coupled look ahead";
+    EXPECT_NEAR(batt_system_loss, 0, m_error_tolerance_lo) << "Ac-coupled look ahead";
+    EXPECT_NEAR(average_battery_roundtrip_efficiency, 90.01, m_error_tolerance_lo) << "Ac-coupled look ahead";
+    EXPECT_NEAR(batt_pv_charge_percent, 99.99, m_error_tolerance_lo) << "Ac-coupled look ahead";
+}
+
+TEST_F(CMPvsamv1_cmod_pvsamv1, AcCoupledBatteryLookBehind) {
+    pvbatt_default(data);
+
+
+    ssc_data_set_number(data, "en_batt", 1);
+    ssc_data_set_number(data, "batt_ac_or_dc", 1);
+
+    // peak shaving look behind
+    ssc_data_set_number(data, "batt_dispatch_choice", 1);
+    int pvsam_errors = run_module(data, "pvsamv1");
+
+    EXPECT_FALSE(pvsam_errors);
+    GetBatteryOutputs();
+
+    EXPECT_NEAR(batt_capacity_percent_total, 144670.33, m_error_tolerance_hi) << "Ac-coupled look behind";
+    EXPECT_NEAR(batt_cycles_total, 283884, m_error_tolerance_lo) << "Ac-coupled look behind";
+    EXPECT_NEAR(batt_power_total, -104.17, m_error_tolerance_lo) << "Ac-coupled look behind";
+    EXPECT_NEAR(grid_power_total, 331.17, m_error_tolerance_lo) << "Ac-coupled look behind";
+    EXPECT_NEAR(batt_to_load_total, 135.90, m_error_tolerance_lo) << "Ac-coupled look behind";
+    EXPECT_NEAR(pv_to_batt_total, 137.75, m_error_tolerance_lo) << "Ac-coupled look behind";
+    EXPECT_NEAR(batt_system_loss, 0, m_error_tolerance_lo) << "Ac-coupled look behind";
+    EXPECT_NEAR(average_battery_roundtrip_efficiency, 91.34, m_error_tolerance_lo) << "Ac-coupled look behind";
+    EXPECT_NEAR(batt_pv_charge_percent, 99.99, m_error_tolerance_lo) << "Ac-coupled look behind";
+}
+
+TEST_F(CMPvsamv1_cmod_pvsamv1, AcCoupledForecast) {
+    // passing
+    pvbatt_default(data);
+
+
+    ssc_data_set_number(data, "en_batt", 1);
+    ssc_data_set_number(data, "batt_ac_or_dc", 1);
+
+    // InputGridTarget
+    ssc_data_set_number(data, "batt_dispatch_choice", 2);
+    ssc_data_set_number(data, "batt_target_choice", 0);
+    double target_power[12] = {1};
+    ssc_data_set_array(data, "batt_target_power_monthly", target_power, 12);
+    int pvsam_errors = run_module(data, "pvsamv1");
+
+    EXPECT_FALSE(pvsam_errors);
+    GetBatteryOutputs();
+
+    EXPECT_NEAR(batt_capacity_percent_total, 856925.81, m_error_tolerance_lo) << "Ac-coupled lnputForecast";
+    EXPECT_NEAR(batt_cycles_total, 1337150, m_error_tolerance_lo) << "Ac-coupled lnputForecast";
+    EXPECT_NEAR(batt_power_total, -322.90, m_error_tolerance_lo) << "Ac-coupled lnputForecast";
+    EXPECT_NEAR(grid_power_total, 2413.78, m_error_tolerance_lo) << "Ac-coupled lnputForecast";
+    EXPECT_NEAR(batt_to_load_total, 2509.75, m_error_tolerance_lo) << "Ac-coupled lnputForecast";
+    EXPECT_NEAR(pv_to_batt_total, 2834.25, m_error_tolerance_lo) << "Ac-coupled lnputForecast";
+    EXPECT_NEAR(batt_system_loss, 0, m_error_tolerance_lo) << "Ac-coupled lnputForecast";
+    EXPECT_NEAR(average_battery_roundtrip_efficiency, 88.58, m_error_tolerance_lo) << "Ac-coupled lnputForecast";
+    EXPECT_NEAR(batt_pv_charge_percent, 99.99, m_error_tolerance_lo) << "Ac-coupled lnputForecast";
+}
+
+TEST_F(CMPvsamv1_cmod_pvsamv1, AcCoupledBatteryPowerTarget) {
+    pvbatt_default(data);
+
+
+    ssc_data_set_number(data, "en_batt", 1);
+    ssc_data_set_number(data, "batt_ac_or_dc", 1);
+
+    // InputBatteryPower
+    ssc_data_set_number(data, "batt_dispatch_choice", 3);
+    double dispatch[8760] = {1};
+    ssc_data_set_array(data, "batt_custom_dispatch", dispatch, 8760);
+    int pvsam_errors = run_module(data, "pvsamv1");
+
+    EXPECT_FALSE(pvsam_errors);
+    GetBatteryOutputs();
+
+    EXPECT_NEAR(batt_capacity_percent_total, 146000, m_error_tolerance_hi) << "Ac-coupled InputBatteryPower";
+    EXPECT_NEAR(batt_cycles_total, 0, m_error_tolerance_lo) << "Ac-coupled InputBatteryPower";
+    EXPECT_NEAR(batt_power_total, 0, m_error_tolerance_lo) << "Ac-coupled InputBatteryPower";
+    EXPECT_NEAR(grid_power_total, 643.37, m_error_tolerance_lo) << "Ac-coupled InputBatteryPower";
+    EXPECT_NEAR(batt_to_load_total, 0, m_error_tolerance_lo) << "Ac-coupled InputBatteryPower";
+    EXPECT_NEAR(pv_to_batt_total, 0, m_error_tolerance_lo) << "Ac-coupled InputBatteryPower";
+    EXPECT_NEAR(batt_system_loss, 0, m_error_tolerance_lo) << "Ac-coupled InputBatteryPower";
+    EXPECT_NEAR(average_battery_roundtrip_efficiency, 100, m_error_tolerance_lo) << "Ac-coupled InputBatteryPower";
+    EXPECT_NEAR(batt_pv_charge_percent, 100, m_error_tolerance_lo) << "Ac-coupled InputBatteryPower";
+}
+
+TEST_F(CMPvsamv1_cmod_pvsamv1, AcCoupledBatteryManual) {
+    // passing
+    pvbatt_default(data);
+
+
+    ssc_data_set_number(data, "en_batt", 1);
+    ssc_data_set_number(data, "batt_ac_or_dc", 1);
+
+    // Manual
+    ssc_data_set_number(data, "batt_dispatch_choice", 4);
+    double manual_charge[6] = {1, 1, 0, 0, 0, 0};
+    ssc_data_set_array(data, "dispatch_manual_charge", manual_charge, 6);
+    double manual_discharge[6] = {0, 0, 1, 0, 0, 0};
+    ssc_data_set_array(data, "dispatch_manual_discharge", manual_discharge, 6);
+    double manual_gridcharge[6] = {1, 0, 0, 0, 0, 0};
+    ssc_data_set_array(data, "dispatch_manual_gridcharge", manual_gridcharge, 6);
+    double manual_percent_discharge[6] = {1, 0, 0, 0, 0, 0};
+    ssc_data_set_array(data, "dispatch_manual_percent_discharge", manual_percent_discharge, 6);
+    double manual_percent_gridcharge[6] = {100, 0, 0, 0, 0, 0};
+    ssc_data_set_array(data, "dispatch_manual_percent_gridcharge", manual_percent_gridcharge, 6);
+    double dispatch_manual_sched [12*24] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 3, 3, 1, 1, 1, 1,
+                                            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 3, 3, 1, 1, 1, 1,
+                                            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 3, 3, 1, 1, 1, 1,
+                                            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 3, 3, 1, 1, 1, 1,
+                                            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 3, 3, 1, 1, 1, 1,
+                                            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 3, 3, 1, 1, 1, 1,
+                                            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 3, 3, 1, 1, 1, 1,
+                                            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 3, 3, 1, 1, 1, 1,
+                                            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 3, 3, 1, 1, 1, 1,
+                                            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 3, 3, 1, 1, 1, 1,
+                                            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 3, 3, 1, 1, 1, 1,
+                                            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 3, 3, 1, 1, 1, 1};
+    ssc_data_set_matrix(data, "dispatch_manual_sched", dispatch_manual_sched, 12, 24);
+    ssc_data_set_matrix(data, "dispatch_manual_sched_weekend", dispatch_manual_sched, 12, 24);
+    int pvsam_errors = run_module(data, "pvsamv1");
+
+    EXPECT_FALSE(pvsam_errors);
+    GetBatteryOutputs();
+
+    EXPECT_NEAR(batt_capacity_percent_total, 875716.35, m_error_tolerance_lo) << "Ac-coupled Manual";
+    EXPECT_NEAR(batt_cycles_total, 1579010, m_error_tolerance_lo) << "Ac-coupled Manual";
+    EXPECT_NEAR(batt_power_total, -18.01, m_error_tolerance_lo) << "Ac-coupled Manual";
+    EXPECT_NEAR(grid_power_total, 2718.67, m_error_tolerance_lo) << "Ac-coupled Manual";
+    EXPECT_NEAR(batt_to_load_total, 119.97, m_error_tolerance_lo) << "Ac-coupled Manual";
+    EXPECT_NEAR(pv_to_batt_total, 16.21, m_error_tolerance_lo) << "Ac-coupled Manual";
+    EXPECT_NEAR(batt_system_loss, 0, m_error_tolerance_lo) << "Ac-coupled Manual";
+    EXPECT_NEAR(average_battery_roundtrip_efficiency, 86.94, m_error_tolerance_lo) << "Ac-coupled Manual";
+    EXPECT_NEAR(batt_pv_charge_percent, 11.74, m_error_tolerance_lo) << "Ac-coupled Manual";
 }

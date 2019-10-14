@@ -1,6 +1,8 @@
 #ifndef _CMOD_PVSAMV1_TEST_H_
 #define _CMOD_PVSAMV1_TEST_H_
 
+#include <numeric>
+
 #include <gtest/gtest.h>
 #include "core.h"
 
@@ -13,7 +15,7 @@
  * Eventually a method can be written to write this data to a vartable so that lower-level methods of pvsamv1 can be tested
  * For now, this uses the SSCAPI interfaces to run the compute module and compare results
  */
-class CMPvsamv1PowerIntegration : public ::testing::Test{
+class CMPvsamv1_cmod_pvsamv1 : public ::testing::Test{
 
 public:
 
@@ -23,13 +25,14 @@ public:
 	double m_error_tolerance_hi = 1.0;
 	double m_error_tolerance_lo = 0.1;
 
-	void SetUp()
+	void SetUp() override
 	{
+	    srand(0);
 		data = ssc_data_create();
 		pvsamv_nofinancial_default(data);
 		calculated_array = new ssc_number_t[8760];
 	}
-	void TearDown() {
+	void TearDown() override {
 		if (data) {
 			ssc_data_free(data);
 			data = nullptr;
@@ -47,6 +50,35 @@ public:
 		int n;
 		calculated_array = ssc_data_get_array(data, const_cast<char *>(name.c_str()), &n);
 	}
+
+    // battery outputs
+    double batt_capacity_percent_total;
+    double batt_cycles_total;
+    double batt_power_total;
+    double grid_power_total;
+    double batt_to_load_total;
+    double pv_to_batt_total;
+    double batt_system_loss;
+    double average_battery_roundtrip_efficiency;
+    double batt_pv_charge_percent;
+
+    void GetBatteryOutputs(){
+        double* arr = ssc_data_get_array(data, "batt_capacity_percent", nullptr);
+        double* arr2 = ssc_data_get_array(data, "batt_cycles", nullptr);
+        double* arr3 = ssc_data_get_array(data, "batt_power", nullptr);
+        double* arr4 = ssc_data_get_array(data, "grid_power", nullptr);
+        double* arr5 = ssc_data_get_array(data, "batt_to_load", nullptr);
+        double* arr6 = ssc_data_get_array(data, "pv_to_batt", nullptr);
+        batt_capacity_percent_total = std::accumulate(arr, arr+8760, 0.);
+        batt_cycles_total = std::accumulate(arr2, arr2+8760, 0.);
+        batt_power_total = std::accumulate(arr3, arr3+8760, 0.);
+        grid_power_total = std::accumulate(arr4, arr4+8760, 0.);
+        batt_to_load_total = std::accumulate(arr5, arr5+8760, 0.);
+        pv_to_batt_total = std::accumulate(arr6, arr6+8760, 0.);
+        ssc_data_get_number(data, "batt_system_loss", &batt_system_loss);
+        ssc_data_get_number(data, "average_battery_roundtrip_efficiency", &average_battery_roundtrip_efficiency);
+        ssc_data_get_number(data, "batt_pv_charge_percent", &batt_pv_charge_percent);
+    }
 };
 
 #endif // !_CMOD_PVSAMV1_TEST_H_
