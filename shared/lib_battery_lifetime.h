@@ -40,6 +40,8 @@ public:
 
     double get_relative_q(){return state.relative_q;}
 
+    size_t get_cycles_elapsed(){return state.nCycles;}
+
     cycle_lifetime_state get_state(){return state; };
 
     void set_state(const cycle_lifetime_state& new_state){ state = new_state; }
@@ -165,6 +167,8 @@ public:
 
     /// Return the relative capacity percentage of nominal (%)
     double get_capacity_percent() {return relative_q;}
+
+    size_t get_cycles_elapsed() {return cycle_model->get_cycles_elapsed();}
 
     void set_state(const lifetime_state& s) {
         cycle_model->set_state(s.cycle);

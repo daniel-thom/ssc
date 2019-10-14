@@ -255,6 +255,8 @@ protected:
     std::map<size_t, double> _percent_charge_array;
 };
 
+class grid_point;
+
 typedef std::vector<grid_point> grid_vec;
 
 /*! Automated dispatch base class */

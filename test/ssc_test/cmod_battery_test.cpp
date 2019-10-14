@@ -121,14 +121,14 @@ TEST_F(CMBattery_cmod_battery, PowerTarget) {
     ASSERT_FALSE(errors);
     GetBatteryOutputs();
 
-    EXPECT_NEAR(batt_capacity_percent_total, 873848.11, m_error_tolerance_hi) << "Ac-coupled InputBatteryPower";
+    EXPECT_NEAR(batt_capacity_percent_total, 873848.11, 873848 * 1e-2) << "Ac-coupled InputBatteryPower";
     EXPECT_NEAR(batt_cycles_total, 1588704, m_error_tolerance_lo) << "Ac-coupled InputBatteryPower";
     EXPECT_NEAR(batt_power_total, -381.82, m_error_tolerance_lo) << "Ac-coupled InputBatteryPower";
-    EXPECT_NEAR(grid_power_total, -5640006.57, m_error_tolerance_lo) << "Ac-coupled InputBatteryPower";
+    EXPECT_NEAR(grid_power_total, -5640006.57, 5640006 * 1e-2) << "Ac-coupled InputBatteryPower";
     EXPECT_NEAR(batt_to_load_total, 2475.31, m_error_tolerance_lo) << "Ac-coupled InputBatteryPower";
     EXPECT_NEAR(pv_to_batt_total,  43.82, m_error_tolerance_lo) << "Ac-coupled InputBatteryPower";
     EXPECT_NEAR(batt_system_loss, 0, m_error_tolerance_lo) << "Ac-coupled InputBatteryPower";
-    EXPECT_NEAR(average_battery_roundtrip_efficiency, 95.64, m_error_tolerance_lo) << "Ac-coupled InputBatteryPower";
+    EXPECT_NEAR(average_battery_roundtrip_efficiency, 95.64, 95 * 1e-2) << "Ac-coupled InputBatteryPower";
     EXPECT_NEAR(batt_pv_charge_percent, 0.15, m_error_tolerance_lo) << "Ac-coupled InputBatteryPower";
 }
 
@@ -156,7 +156,7 @@ TEST_F(CMBattery_cmod_battery, Manual) {
     ASSERT_FALSE(errors);
     GetBatteryOutputs();
 
-    EXPECT_NEAR(batt_capacity_percent_total, 875762.55, m_error_tolerance_lo) << "Ac-coupled Manual";
+    EXPECT_NEAR(batt_capacity_percent_total, 875762.55, 875762.55 * 1e-2) << "Ac-coupled Manual";
     EXPECT_NEAR(batt_cycles_total, 47609, m_error_tolerance_lo) << "Ac-coupled Manual";
     EXPECT_NEAR(batt_power_total, 26.60, m_error_tolerance_lo) << "Ac-coupled Manual";
     EXPECT_NEAR(grid_power_total, -5639598.14, m_error_tolerance_lo) << "Ac-coupled Manual";

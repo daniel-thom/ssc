@@ -1,6 +1,6 @@
 #include <math.h>
 #include <gtest/gtest.h>
-
+#include "code_generator_utilities.h"
 #include "lib_battery_dispatch_test.h"
 
 #include <lib_ondinv.h>
@@ -52,6 +52,75 @@ TEST_F(BatteryDispatchTest_lib_battery_dispatch, DispatchManual)
 
 }
 
+TEST_F(BatteryDispatchTest_lib_battery_dispatch, DispatchManualYear)
+{
+    BatteryPower * powerflow = dispatchManual->getBatteryPower();
+    powerflow->connectionMode = ChargeController::AC_CONNECTED;
+
+    BatteryPower * powerflowOld = dispatchManualOld->getBatteryPower();
+    powerflowOld->connectionMode = ChargeController::AC_CONNECTED;
+
+
+    powerflow->reset();
+
+    auto gen = getGen();
+
+    size_t year = 0;
+    size_t hour = 0;
+    for (auto& P_gen : gen){
+        powerflow->powerGeneratedBySystem = P_gen;
+        powerflow->powerPV = P_gen;
+        powerflow->powerLoad = P_load;
+        powerflow->voltageSystem = 0;
+        powerflow->powerPVClipped = 0;
+
+        if (powerflow->powerPV < 0)
+        {
+            powerflow->powerPVInverterDraw = batteryPower->powerPV;
+            powerflow->powerPV = 0;
+        }
+
+        // For AC connected system, there is no power going through shared inverter
+        powerflow->powerPVThroughSharedInverter = 0;
+        powerflow->powerPVClipped = 0;
+
+        // Dispatch the battery
+        dispatchManual->dispatch(year, hour, 0);
+
+
+        powerflowOld->powerGeneratedBySystem = P_gen;
+        powerflowOld->powerPV = P_gen;
+        powerflowOld->powerLoad = P_load;
+        powerflowOld->voltageSystem = 0;
+        powerflowOld->powerPVClipped = 0;
+
+        if (powerflowOld->powerPV < 0)
+        {
+            powerflowOld->powerPVInverterDraw = batteryPower->powerPV;
+            powerflowOld->powerPV = 0;
+        }
+
+        // For AC connected system, there is no power going through shared inverter
+        powerflowOld->powerPVThroughSharedInverter = 0;
+        powerflowOld->powerPVClipped = 0;
+
+        // Dispatch the battery
+        dispatchManualOld->dispatch(year, hour, 0);
+
+        ASSERT_EQ(powerflow->powerGridToBattery, powerflowOld->powerGridToBattery);
+        ASSERT_EQ(powerflow->powerBatteryToGrid, powerflowOld->powerBatteryToGrid);
+        ASSERT_EQ(powerflow->powerBatteryTarget, powerflowOld->powerBatteryTarget);
+        ASSERT_EQ(powerflow->powerBatteryToLoad, powerflowOld->powerBatteryToLoad);
+        ASSERT_EQ(powerflow->powerPVToBattery, powerflowOld->powerPVToBattery);
+
+        hour ++;
+        if (hour == 8760){
+            hour = 0;
+            year ++;
+        }
+    }
+}
+
 TEST_F(BatteryDispatchTest_lib_battery_dispatch, DispatchAutoBTM)
 {
 	// Setup pv and load signal for peak shaving algorithm
@@ -80,6 +149,97 @@ TEST_F(BatteryDispatchTest_lib_battery_dispatch, DispatchAutoBTM)
 	EXPECT_GT(batteryPower->powerGridToBattery, 0);
 	EXPECT_LT(batteryPower->powerBatteryDC, 0);
 }
+
+
+TEST_F(BatteryDispatchTest_lib_battery_dispatch, DispatchPeakShavingAheadYear)
+{
+    P_load = 600.;
+    pv_prediction.clear();
+    load_prediction.clear();
+    // Setup pv and load signal for peak shaving algorithm
+    for (int d = 0; d < 365; d++) {
+        for (int h = 0; h < 24; h++) {
+            if (h > 6 && h < 18) {
+                pv_prediction.push_back(fabs(12 - h) * 100);
+            }
+            else
+                pv_prediction.push_back(0);
+            load_prediction.push_back(P_load);
+        }
+    }
+    dispatchAutoBTM->update_load_data(load_prediction);
+    dispatchAutoBTM->update_pv_data(pv_prediction);
+
+    dispatchAutoBTMOld->update_load_data(load_prediction);
+    dispatchAutoBTMOld->update_pv_data(pv_prediction);
+
+    BatteryPower * powerflow = dispatchAutoBTM->getBatteryPower();
+    powerflow->connectionMode = ChargeController::AC_CONNECTED;
+
+    BatteryPower * powerflowOld = dispatchAutoBTMOld->getBatteryPower();
+    powerflowOld->connectionMode = ChargeController::AC_CONNECTED;
+
+
+    powerflow->reset();
+
+    auto gen = getGen();
+
+    size_t year = 0;
+    size_t hour = 0;
+    for (auto& P_gen : pv_prediction){
+        powerflow->powerGeneratedBySystem = P_gen;
+        powerflow->powerPV = P_gen;
+        powerflow->powerLoad = P_load;
+        powerflow->voltageSystem = 0;
+        powerflow->powerPVClipped = 0;
+
+        if (powerflow->powerPV < 0)
+        {
+            powerflow->powerPVInverterDraw = batteryPower->powerPV;
+            powerflow->powerPV = 0;
+        }
+
+        // For AC connected system, there is no power going through shared inverter
+        powerflow->powerPVThroughSharedInverter = 0;
+        powerflow->powerPVClipped = 0;
+
+        // Dispatch the battery
+        dispatchAutoBTM->dispatch(year, hour, 0);
+
+
+        powerflowOld->powerGeneratedBySystem = P_gen;
+        powerflowOld->powerPV = P_gen;
+        powerflowOld->powerLoad = P_load;
+        powerflowOld->voltageSystem = 0;
+        powerflowOld->powerPVClipped = 0;
+
+        if (powerflowOld->powerPV < 0)
+        {
+            powerflowOld->powerPVInverterDraw = batteryPower->powerPV;
+            powerflowOld->powerPV = 0;
+        }
+
+        // For AC connected system, there is no power going through shared inverter
+        powerflowOld->powerPVThroughSharedInverter = 0;
+        powerflowOld->powerPVClipped = 0;
+
+        // Dispatch the battery
+        dispatchAutoBTMOld->dispatch(year, hour, 0);
+
+        ASSERT_EQ(powerflow->powerGridToBattery, powerflowOld->powerGridToBattery);
+        ASSERT_EQ(powerflow->powerBatteryToGrid, powerflowOld->powerBatteryToGrid);
+        assert(powerflow->powerBatteryTarget == powerflowOld->powerBatteryTarget);
+        ASSERT_EQ(powerflow->powerBatteryToLoad, powerflowOld->powerBatteryToLoad);
+        ASSERT_EQ(powerflow->powerPVToBattery, powerflowOld->powerPVToBattery);
+
+        hour ++;
+        if (hour == 8760){
+            hour = 0;
+            year ++;
+        }
+    }
+}
+
 
 TEST_F(BatteryDispatchTest_lib_battery_dispatch, DispatchFOMInput)
 {

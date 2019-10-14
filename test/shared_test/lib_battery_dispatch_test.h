@@ -321,6 +321,34 @@ public:
 		}
 	}
 
+	std::vector<double> getGen(){
+	    std::vector<double> arr;
+	    size_t len = 175200;
+        char fn[256];
+        int nb1 = sprintf(fn, "%s/test/input_cases/battery_data/lifetime_gen.csv", SSCDIR);
+        char buffer[1024];
+        char *record, *line;
+        int i = 0;
+        ssc_number_t *ary;
+        FILE *fp = fopen(fn, "r");
+        if (fp == NULL)
+        {
+            printf("file opening failed ");
+        }
+        ary = (ssc_number_t *)malloc(len * sizeof(ssc_number_t));
+        while ((line = fgets(buffer, sizeof(buffer), fp)) != NULL)
+        {
+            record = strtok(line, ",");
+            while ((record != NULL) && (i < len))
+            {
+                arr.push_back(atof(record));
+                record = strtok(NULL, ",");
+                i++;
+            }
+        }
+        fclose(fp);
+        return arr;
+	}
 };
 
 #endif

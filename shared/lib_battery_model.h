@@ -118,6 +118,7 @@ public:
     double get_I(){return capacity->get_I();}
     double get_V(){return voltage->get_battery_voltage();}
     double get_SOC();
+
     double get_battery_charge_needed(double SOC_max);
     double battery_charge_maximum();
     double battery_charge_maximum_thermal();
@@ -127,6 +128,8 @@ public:
 
     double battery_voltage_nominal(); // the nominal battery voltage
 
+    double get_capacity_percent(){return lifetime->get_capacity_percent();}
+    size_t get_cycles_elapsed(){return lifetime->get_cycles_elapsed();}
     size_t get_n_replacements(){return replacements;}
 
 private:
