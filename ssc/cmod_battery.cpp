@@ -1594,13 +1594,10 @@ public:
 							throw exec_error("battery", "simulation canceled at hour " + util::to_string(hour + 1.0));
 						}
 					}
-                    std::cerr << hour << ": "; //\n---------------\n";
-
 					for (size_t jj = 0; jj < batt.step_per_hour; jj++)
 					{
 	
 						batt.initialize_time(year, hour, jj);
-//						batt.check_replacement_schedule();
 						batt.advance(m_vartab, power_input_lifetime[lifetime_idx], 0, load_lifetime[lifetime_idx], 0);
 						p_gen[lifetime_idx] = batt.outGenPower[lifetime_idx];
 						if (year == 0) {
@@ -1608,18 +1605,6 @@ public:
 						}
 						lifetime_idx++;
 					}
-                    std::cerr << (abs(batt.dispatch_model_old->getBatteryPower()->powerPVToBattery - batt.dispatch_model->getBatteryPower()->powerPVToBattery)) << ", ";
-                    std::cerr << (abs(batt.dispatch_model_old->getBatteryPower()->powerBatteryToLoad - batt.dispatch_model->getBatteryPower()->powerBatteryToLoad)) << ", ";
-                    std::cerr << (abs(batt.dispatch_model_old->getBatteryPower()->powerBatteryTarget - batt.dispatch_model->getBatteryPower()->powerBatteryTarget)) << ", ";
-                    std::cerr << (abs(batt.dispatch_model_old->getBatteryPower()->powerBatteryDC - batt.dispatch_model->getBatteryPower()->powerBatteryDC)) << ", ";
-                    std::cerr << (abs(batt.dispatch_model_old->getBatteryPower()->powerGridToBattery - batt.dispatch_model->getBatteryPower()->powerGridToBattery)) << ", ";
-                    std::cerr << (abs(batt.dispatch_model_old->getBatteryPower()->powerGridToLoad - batt.dispatch_model->getBatteryPower()->powerGridToLoad)) << ", ";
-                    std::cerr << (abs(batt.dispatch_model_old->getBatteryPower()->powerPVToLoad - batt.dispatch_model->getBatteryPower()->powerPVToLoad)) << "\n";
-					if (hour % 240 == 0)
-					    int x = 0;
-					if (hour == 3799)
-					    int x = 0;
-//					std::cerr <<"\n\n";
 				}
 			}
             process_messages(&batt, this);
