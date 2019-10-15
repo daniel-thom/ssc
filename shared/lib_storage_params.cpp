@@ -81,21 +81,21 @@ void battery_lifetime_params::initialize_from_data(var_table &vt, storage_time_p
     if (cycle_matrix.nrows() < 3 || cycle_matrix.ncols() != 3)
         throw general_error("Battery lifetime matrix must have three columns and at least three rows");
 
-    int choice = vt.as_integer("batt_calendar_choice");
+    choice = static_cast<CALENDAR>(vt.as_integer("batt_calendar_choice"));
     switch (choice){
-        case 0 : {
-            choice = battery_lifetime_params::TABLE;
-            calendar_matrix = vt.as_matrix("batt_calendar_lifetime_matrix");
-            if ((calendar_matrix.nrows() < 2 || calendar_matrix.ncols() != 2))
-                throw general_error("Battery calendar lifetime matrix must have 2 columns and at least 2 rows");
+        case NONE:
             break;
-        }
-        case 1 : {
-            choice = battery_lifetime_params::MODEL;
+        case MODEL : {
             calendar_q0 = vt.as_double("batt_calendar_q0");
             calendar_a = vt.as_double("batt_calendar_a");
             calendar_b = vt.as_double("batt_calendar_b");
             calendar_c = vt.as_double("batt_calendar_c");
+            break;
+        }
+        case TABLE : {
+            calendar_matrix = vt.as_matrix("batt_calendar_lifetime_matrix");
+            if ((calendar_matrix.nrows() < 2 || calendar_matrix.ncols() != 2))
+                throw general_error("Battery calendar lifetime matrix must have 2 columns and at least 2 rows");
             break;
         }
         default:
@@ -247,4 +247,15 @@ void battery_properties_params::initialize_from_data(var_table& vt, storage_time
     auto los = new battery_losses_params();
     los->initialize_from_data(vt, t);
     losses = std::shared_ptr<const battery_losses_params>(los);
+
+    if (vt.as_integer("batt_replacement_option") > 0){
+        auto rep = new storage_replacement_params();
+        rep->initialize_from_data(vt, true);
+
+        if (t.system_use_lifetime_output && rep->option == storage_replacement_params::SCHEDULE){
+            if (rep->replacement_per_yr_schedule.size() != t.nyears || rep->replacement_percent_per_yr_schedule.size() != t.nyears)
+                throw general_error("battery replacements per year array must be same length as analysis_years.");
+        }
+        replacement = std::shared_ptr<storage_replacement_params>(rep);
+    }
 }

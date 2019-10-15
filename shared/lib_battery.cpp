@@ -1651,7 +1651,14 @@ void battery_t::initialize(capacity_t *capacity, voltage_t * voltage, lifetime_t
 }
 
 void battery_t::run(size_t lifetimeIndex, double I)
-{	
+{
+
+    if (_lifetime->check_replaced())
+    {
+        _capacity->replace_battery(_lifetime->get_replacement_percent());
+        _thermal->replace_battery(lifetimeIndex);
+        _losses->replace_battery();
+    }
 
 	// Temperature affects capacity, but capacity model can reduce current, which reduces temperature, need to iterate
 	double I_initial = I;
@@ -1705,12 +1712,6 @@ void battery_t::runLifetimeModel(size_t lifetimeIndex)
 {
     _lifetime->runLifetimeModels(lifetimeIndex, capacity_model()->SOC(), capacity_model()->chargeChanged(),
                                  thermal_model()->get_T_battery());
-	if (_lifetime->check_replaced())
-	{
-		_capacity->replace_battery(_lifetime->get_replacement_percent());
-		_thermal->replace_battery(lifetimeIndex);
-		_losses->replace_battery();
-	}
 }
 void battery_t::runLossesModel(size_t idx)
 {

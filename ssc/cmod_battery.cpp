@@ -862,12 +862,6 @@ battstor::battstor(var_table& vt, bool setup_model, size_t nrec, double dt_hr, b
 
     battery_model = std::make_shared<battery>(params);
 
-    if (vt.as_integer("batt_replacement_option") > 0){
-        auto rep = std::shared_ptr<storage_replacement_params>(new storage_replacement_params());
-        rep->initialize_from_data(vt, !batt_vars->en_fuelcell);
-        battery_model->set_replacement_params(rep);
-    }
-
 
     battery_metrics = new battery_metrics_t(dt_hr);
     battery_metrics_old = new battery_metrics_t(dt_hr);
@@ -1249,38 +1243,38 @@ battstor::battstor(const battstor& orig){
 }
 
 
-//void battstor::check_replacement_schedule()
-//{
-//	if (batt_vars->batt_replacement_option == battery_t::REPLACE_BY_SCHEDULE)
-//	{
-//		// don't allow replacement on first hour of first year
-//		if (hour == 0 && year == 0)
-//			return;
-//
-//		bool replace = false;
-//		if (year < batt_vars->batt_replacement_schedule.size())
-//		{
-//			size_t num_repl = (size_t)batt_vars->batt_replacement_schedule[year];
-//			for (size_t j_repl = 0; j_repl < num_repl; j_repl++)
-//			{
-//				if ((hour == (j_repl * 8760 / num_repl)) && step == 0)
-//				{
-//					replace = true;
-//					break;
-//				}
-//			}
-//		}
-//		if (replace) {
-//			double replacement_percent = batt_vars->batt_replacement_schedule_percent[year];
-//			force_replacement(replacement_percent);
-//	}
-//}
-//}
-//void battstor::force_replacement(double replacement_percent)
-//{
-//	lifetime_model->force_replacement(replacement_percent);
-//	battery_model->runLifetimeModel(0);
-//}
+void battstor::check_replacement_schedule()
+{
+	if (batt_vars->batt_replacement_option == battery_t::REPLACE_BY_SCHEDULE)
+	{
+		// don't allow replacement on first hour of first year
+		if (hour == 0 && year == 0)
+			return;
+
+		bool replace = false;
+		if (year < batt_vars->batt_replacement_schedule.size())
+		{
+			size_t num_repl = (size_t)batt_vars->batt_replacement_schedule[year];
+			for (size_t j_repl = 0; j_repl < num_repl; j_repl++)
+			{
+				if ((hour == (j_repl * 8760 / num_repl)) && step == 0)
+				{
+					replace = true;
+					break;
+				}
+			}
+		}
+		if (replace) {
+			double replacement_percent = batt_vars->batt_replacement_schedule_percent[year];
+			force_replacement(replacement_percent);
+	}
+}
+}
+void battstor::force_replacement(double replacement_percent)
+{
+	lifetime_model->force_replacement(replacement_percent);
+	battery_model_old->runLifetimeModel(0);
+}
 
 void battstor::initialize_time(size_t year_in, size_t hour_of_year, size_t step_of_hour)
 {

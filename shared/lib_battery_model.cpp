@@ -109,8 +109,7 @@ battery::battery(const std::shared_ptr<const battery_properties_params>& p):
 lifetime(new battery_lifetime(p->lifetime)),
 thermal(new battery_thermal(p->thermal)),
 losses(new battery_losses(p->losses)),
-params(p),
-replacement_params(nullptr)
+params(p)
 {
     if (p->chem != battery_properties_params::LEAD_ACID) {
         capacity = new capacity_lithium_ion(p->capacity);
@@ -134,7 +133,6 @@ replacement_params(nullptr)
 
 battery::battery(const battery& battery):
 params(battery.params),
-replacement_params(battery.replacement_params),
 capacity(battery.capacity),
 voltage(battery.voltage),
 thermal(battery.thermal),
@@ -166,7 +164,7 @@ battery_state battery::get_state(){
 
 void battery::run(const storage_time_state& time, double I_guess)
 {
-    if (replacement_params)
+    if (params->replacement)
         run_replacement(time);
 
     // Temperature affects capacity, but capacity model can reduce current, which reduces temperature, need to iterate
@@ -237,9 +235,9 @@ void battery::run_losses_model(const storage_time_state &time)
 
 void battery::run_replacement(const storage_time_state& time){
     bool replace = false;
-    if (time.get_year() < replacement_params->replacement_per_yr_schedule.size())
+    if (time.get_year() < params->replacement->replacement_per_yr_schedule.size())
     {
-        auto num_repl = (size_t)replacement_params->replacement_per_yr_schedule[time.get_year()];
+        auto num_repl = (size_t)params->replacement->replacement_per_yr_schedule[time.get_year()];
         for (size_t j_repl = 0; j_repl < num_repl; j_repl++)
         {
             if ((time.get_hour_year() == (j_repl * 8760 / num_repl)) && time.get_index() == 0)
@@ -252,12 +250,12 @@ void battery::run_replacement(const storage_time_state& time){
     bool replaced = false;
     double q = lifetime->get_capacity_percent();
     double replacement_percent = 0;
-    if ((replacement_params->option == storage_replacement_params::CAPACITY
-        && (q - tolerance) <= replacement_params->replacement_capacity) || replace)
+    if ((params->replacement->option == storage_replacement_params::CAPACITY
+        && (q - tolerance) <= params->replacement->replacement_capacity) || replace)
     {
         replacements++;
 
-        replacement_percent = replacement_params->replacement_percent_per_yr_schedule[time.get_year()];
+        replacement_percent = params->replacement->replacement_percent_per_yr_schedule[time.get_year()];
         q += replacement_percent;
 
         // for now, only allow augmenting up to original installed capacity
@@ -301,7 +299,7 @@ double battery::get_battery_power_to_fill(double SOC_max)
     return (this->get_battery_energy_to_fill(SOC_max) / params->capacity->time->dt_hour);
 }
 
-double battery::battery_charge_maximum(){ return capacity->get_state().qmax; }
-double battery::battery_charge_maximum_thermal() { return capacity->get_state().qmax_thermal; }
+double battery::battery_charge_maximum(){ return capacity->get_qmax(); }
+double battery::battery_charge_maximum_thermal() { return capacity->get_qmax_thermal(); }
 double battery::battery_voltage_nominal(){ return voltage->get_battery_voltage_nominal(); }
-double battery::get_SOC(){ return capacity->get_state().SOC; }
+double battery::get_SOC(){ return capacity->get_SOC(); }

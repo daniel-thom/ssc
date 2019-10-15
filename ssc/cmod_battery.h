@@ -270,8 +270,8 @@ struct battstor
 	bool input_custom_dispatch = false;
 
 	// for user schedule
-//	void force_replacement(double replacement_percent);
-//	void check_replacement_schedule();
+	void force_replacement(double replacement_percent);
+	void check_replacement_schedule();
 	void calculate_monthly_and_annual_outputs( compute_module &cm );
 
 	// time quantities

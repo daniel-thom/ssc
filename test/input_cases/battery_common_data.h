@@ -83,10 +83,10 @@ namespace {
 		ssc_data_set_number(data, "batt_calendar_b", -7280);
 		ssc_data_set_number(data, "batt_calendar_c", 930);
 		ssc_data_set_number(data, "batt_replacement_capacity", 0);
-		ssc_number_t p_batt_replacement_schedule[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 };
-		ssc_data_set_array(data, "batt_replacement_schedule", p_batt_replacement_schedule, 10);
-		ssc_number_t p_batt_replacement_schedule_percent[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 100 };
-		ssc_data_set_array(data, "batt_replacement_schedule_percent", p_batt_replacement_schedule_percent, 10);
+		ssc_number_t p_batt_replacement_schedule[20] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+		ssc_data_set_array(data, "batt_replacement_schedule", p_batt_replacement_schedule, 20);
+		ssc_number_t p_batt_replacement_schedule_percent[20] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+		ssc_data_set_array(data, "batt_replacement_schedule_percent", p_batt_replacement_schedule_percent, 20);
 		ssc_number_t p_replacement_cost[1] = { 68 };
 		ssc_data_set_array(data, "om_replacement_cost1", p_replacement_cost, 1);
 		ssc_data_set_number(data, "batt_mass", 3102.717041015625);

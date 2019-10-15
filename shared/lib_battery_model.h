@@ -97,10 +97,6 @@ public:
 
     ~battery();
 
-    void set_replacement_params(const std::shared_ptr<const storage_replacement_params>& p){
-        replacement_params = p;
-    }
-
     // Run all for single time step
     void run(const storage_time_state& time, double I_guess);
 
@@ -141,7 +137,6 @@ public:
 private:
 
     std::shared_ptr<const battery_properties_params> params;
-    std::shared_ptr<const storage_replacement_params> replacement_params;
 
     battery_capacity_interface * capacity;
     battery_thermal * thermal;

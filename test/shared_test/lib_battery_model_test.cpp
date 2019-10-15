@@ -279,22 +279,20 @@ TEST_F(lib_battery_test, AugmentCapacity)
     std::vector<int> replacement_schedule = { 1, 1, 1 };
     std::vector<double> augmentation_percent = { 50, 40 , 30 };
 
-    auto p = std::shared_ptr<const storage_replacement_params>(new storage_replacement_params({
+
+    params->replacement = std::shared_ptr<const storage_replacement_params>(new storage_replacement_params({
         storage_replacement_params::SCHEDULE, 0., replacement_schedule, std::vector<int>(),
                 augmentation_percent
     }));
 
     // Current, limited approach which only augments capacity in models, does not update lifetime degradation
     // trajectories or consider impacts on voltage and other aspects.
-    batteryModel->set_replacement_params(p);
 
     // Correct future approach for augmenting batteries, by treating as seperate entities
     std::vector<std::shared_ptr<battery>> batteries;
     batteries.push_back(batteryModel);
     batteries.push_back(std::shared_ptr<battery>(new battery(*batteryModel)));
     batteries.push_back(std::shared_ptr<battery>(new battery(*batteryModel)));
-    batteries[1]->set_replacement_params(p);
-    batteries[2]->set_replacement_params(p);
 
     storage_time_state time(1);
     double I = 100;

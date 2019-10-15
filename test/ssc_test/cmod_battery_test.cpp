@@ -21,7 +21,7 @@ TEST_F(CMBattery_cmod_battery, CommercialLifetimePeakShaving) {
 		// roundtrip efficiency test will ensure that the battery cycled
 		ssc_number_t roundtripEfficiency;
 		ssc_data_get_number(data, "average_battery_roundtrip_efficiency", &roundtripEfficiency);
-		EXPECT_NEAR(roundtripEfficiency, 90.06, 2);
+		EXPECT_NEAR(roundtripEfficiency, 93.84, 0.1);
 
 		// test that lifetime output is achieved
 		int n;
@@ -53,7 +53,7 @@ TEST_F(CMBattery_cmod_battery, LookAhead) {
     EXPECT_NEAR(batt_to_load_total, 38598, 38598 * 1e-3) << "Ac-coupled look ahead";
     EXPECT_NEAR(pv_to_batt_total, 0, m_error_tolerance_lo) << "Ac-coupled look ahead";
     EXPECT_NEAR(batt_system_loss, 0, m_error_tolerance_lo) << "Ac-coupled look ahead";
-    EXPECT_NEAR(average_battery_roundtrip_efficiency, 94.37, 94.37 * 1e-3) << "Ac-coupled look ahead";
+    EXPECT_NEAR(average_battery_roundtrip_efficiency, 94.37, 94.37 * 1e-2) << "Ac-coupled look ahead";
     EXPECT_NEAR(batt_pv_charge_percent, 0.07, m_error_tolerance_lo) << "Ac-coupled look ahead";
 }
 
@@ -74,7 +74,7 @@ TEST_F(CMBattery_cmod_battery, LookBehind) {
     EXPECT_NEAR(batt_to_load_total, 38925, 38925 * 1e-3) << "Ac-coupled look behind";
     EXPECT_NEAR(pv_to_batt_total, 0, m_error_tolerance_lo) << "Ac-coupled look behind";
     EXPECT_NEAR(batt_system_loss, 0, m_error_tolerance_lo) << "Ac-coupled look behind";
-    EXPECT_NEAR(average_battery_roundtrip_efficiency, 94.42, 94 * 1e-3) << "Ac-coupled look behind";
+    EXPECT_NEAR(average_battery_roundtrip_efficiency, 94.42, 94 * 1e-2) << "Ac-coupled look behind";
     EXPECT_NEAR(batt_pv_charge_percent, 0.06, m_error_tolerance_lo) << "Ac-coupled look behind";
 }
 
@@ -99,7 +99,7 @@ TEST_F(CMBattery_cmod_battery, InputForecast) {
     EXPECT_NEAR(batt_to_load_total, 2787, 2787 * 1e-3) << "Ac-coupled lnputForecast";
     EXPECT_NEAR(pv_to_batt_total, 2744, 2744 * 1e-3) << "Ac-coupled lnputForecast";
     EXPECT_NEAR(batt_system_loss, 0, m_error_tolerance_lo) << "Ac-coupled lnputForecast";
-    EXPECT_NEAR(average_battery_roundtrip_efficiency, 93.38, 93 * 1e-3) << "Ac-coupled lnputForecast";
+    EXPECT_NEAR(average_battery_roundtrip_efficiency, 93.38, 93 * 1e-2) << "Ac-coupled lnputForecast";
     EXPECT_NEAR(batt_pv_charge_percent, 99.301, 99 * 1e-3) << "Ac-coupled lnputForecast";
 }
 
@@ -128,7 +128,7 @@ TEST_F(CMBattery_cmod_battery, PowerTarget) {
     EXPECT_NEAR(batt_to_load_total, 2475.31, 2475 * 1e-3) << "Ac-coupled InputBatteryPower";
     EXPECT_NEAR(pv_to_batt_total,  5.77, 43 * 1e-3) << "Ac-coupled InputBatteryPower";
     EXPECT_NEAR(batt_system_loss, 0, m_error_tolerance_lo) << "Ac-coupled InputBatteryPower";
-    EXPECT_NEAR(average_battery_roundtrip_efficiency, 95.64, 95 * 1e-3) << "Ac-coupled InputBatteryPower";
+    EXPECT_NEAR(average_battery_roundtrip_efficiency, 95.64, 95 * 1e-2) << "Ac-coupled InputBatteryPower";
     EXPECT_NEAR(batt_pv_charge_percent, 0.012, m_error_tolerance_lo) << "Ac-coupled InputBatteryPower";
 }
 
@@ -158,11 +158,11 @@ TEST_F(CMBattery_cmod_battery, Manual) {
 
     EXPECT_NEAR(batt_capacity_percent_total, 875762, 875762 * 1e-3) << "Ac-coupled Manual";
     EXPECT_NEAR(batt_cycles_total, 47609, 47609 * 1e-3) << "Ac-coupled Manual";
-    EXPECT_NEAR(batt_power_total, 26.60, 26 * 1e-3) << "Ac-coupled Manual";
+    EXPECT_NEAR(batt_power_total, 27.37, 27 * 1e-3) << "Ac-coupled Manual";
     EXPECT_NEAR(grid_power_total, -5639597, 5639597 * 1e-3) << "Ac-coupled Manual";
     EXPECT_NEAR(batt_to_load_total, 2769, 2769 * 1e-3) << "Ac-coupled Manual";
     EXPECT_NEAR(pv_to_batt_total, 2742, 2742 * 1e-3) << "Ac-coupled Manual";
     EXPECT_NEAR(batt_system_loss, 0, m_error_tolerance_lo) << "Ac-coupled Manual";
-    EXPECT_NEAR(average_battery_roundtrip_efficiency, 93.36, 93 * 1e-3) << "Ac-coupled Manual";
+    EXPECT_NEAR(average_battery_roundtrip_efficiency, 93.36, 93 * 1e-2) << "Ac-coupled Manual";
     EXPECT_NEAR(batt_pv_charge_percent, 99.99, m_error_tolerance_lo) << "Ac-coupled Manual";
 }

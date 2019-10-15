@@ -191,6 +191,8 @@ struct battery_properties_params
 
     std::shared_ptr<const battery_losses_params> losses;
 
+    std::shared_ptr<const storage_replacement_params> replacement;
+
     void initialize_from_data(var_table& vt, storage_time_params& t);
 };
 
