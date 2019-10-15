@@ -1314,8 +1314,8 @@ void battstor::advance(var_table *vt, double P_gen, double V_gen, double P_load,
     charge_control_old->run(year, hour, step, year_index);
 
 
-    std::cerr << "battsor advance: " << dispatch_model->power_tofrom_battery() << ", " << dispatch_model->power_tofrom_grid();
-	std::cerr << ", " << dispatch_model->power_gen()  << ", " << dispatch_model->power_pv_to_batt()  << ", " << dispatch_model->power_grid_to_batt() << "\n";
+    double q0 = dispatch_model_old->battery_model()->capacity_model()->q0();
+    double qmax = dispatch_model_old->battery_model()->capacity_model()->qmax();
 
 	outputs_fixed(vt);
     outputs_topology_dependent();
