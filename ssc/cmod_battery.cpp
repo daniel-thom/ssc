@@ -25,10 +25,13 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "cmod_battery.h"
 #include "common.h"
 #include "core.h"
-#include "lib_battery.h"
-#include "lib_battery_dispatch.h"
+#include "lib_storage_params.h"
+#include "lib_battery_model.h"
+#include "lib_dispatch.h"
 #include "lib_battery_powerflow.h"
+#include "lib_battery_controller.h"
 #include "lib_power_electronics.h"
+#include "lib_battery_controller.h"
 #include "lib_shared_inverter.h"
 #include "lib_time.h"
 #include "lib_util.h"
@@ -376,7 +379,7 @@ battstor::battstor(var_table& vt, bool setup_model, size_t nrec, double dt_hr, b
 			batt_vars->batt_meter_position = vt.as_integer("batt_meter_position");
 
 			// Front of meter
-			if (batt_vars->batt_meter_position == dispatch_t::FRONT)
+			if (batt_vars->batt_meter_position == dispatch_interface::FRONT)
 			{
 
 				batt_vars->pv_clipping_forecast = vt.as_vector_double("batt_pv_clipping_forecast");
@@ -432,14 +435,14 @@ battstor::battstor(var_table& vt, bool setup_model, size_t nrec, double dt_hr, b
 				batt_vars->batt_cycle_cost_choice = vt.as_integer("batt_cycle_cost_choice");
 				batt_vars->batt_cycle_cost = vt.as_double("batt_cycle_cost");
 
-				if (batt_vars->batt_dispatch == dispatch_t::FOM_LOOK_AHEAD ||
-					batt_vars->batt_dispatch == dispatch_t::FOM_FORECAST ||
-					batt_vars->batt_dispatch == dispatch_t::FOM_LOOK_BEHIND)
+				if (batt_vars->batt_dispatch == dispatch_interface::FOM_LOOK_AHEAD ||
+					batt_vars->batt_dispatch == dispatch_interface::FOM_FORECAST ||
+					batt_vars->batt_dispatch == dispatch_interface::FOM_LOOK_BEHIND)
 				{
 					batt_vars->batt_look_ahead_hours = vt.as_unsigned_long("batt_look_ahead_hours");
 					batt_vars->batt_dispatch_update_frequency_hours = vt.as_double("batt_dispatch_update_frequency_hours");
 				}
-				else if (batt_vars->batt_dispatch == dispatch_t::FOM_CUSTOM_DISPATCH)
+				else if (batt_vars->batt_dispatch == dispatch_interface::FOM_CUSTOM_DISPATCH)
 				{
 					batt_vars->batt_custom_dispatch = vt.as_vector_double("batt_custom_dispatch");
 				}
@@ -447,13 +450,13 @@ battstor::battstor(var_table& vt, bool setup_model, size_t nrec, double dt_hr, b
 			// Automated behind-the-meter
 			else
 			{
-				if (batt_vars->batt_dispatch == dispatch_t::MAINTAIN_TARGET)
+				if (batt_vars->batt_dispatch == dispatch_interface::MAINTAIN_TARGET)
 				{
 					batt_vars->batt_target_choice = vt.as_integer("batt_target_choice");
 					batt_vars->target_power_monthly = vt.as_vector_double("batt_target_power_monthly");
 					batt_vars->target_power = vt.as_vector_double("batt_target_power");
 
-					if (batt_vars->batt_target_choice == dispatch_automatic_behind_the_meter_t::TARGET_SINGLE_MONTHLY)
+					if (batt_vars->batt_target_choice == dispatch_automatic_behind_the_meter::TARGET_SINGLE_MONTHLY)
 					{
 						target_power_monthly = batt_vars->target_power_monthly;
 						target_power.clear();
@@ -484,15 +487,15 @@ battstor::battstor(var_table& vt, bool setup_model, size_t nrec, double dt_hr, b
 					batt_vars->target_power = target_power;
 
 				}
-				else if (batt_vars->batt_dispatch == dispatch_t::CUSTOM_DISPATCH)
+				else if (batt_vars->batt_dispatch == dispatch_interface::CUSTOM_DISPATCH)
 				{
 					batt_vars->batt_custom_dispatch = vt.as_vector_double("batt_custom_dispatch");
 				}
 			}
 
 			// Manual dispatch
-			if ((batt_vars->batt_meter_position == dispatch_t::FRONT && batt_vars->batt_dispatch == dispatch_t::FOM_MANUAL) ||
-				(batt_vars->batt_meter_position == dispatch_t::BEHIND && batt_vars->batt_dispatch == dispatch_t::MANUAL))
+			if ((batt_vars->batt_meter_position == dispatch_interface::FRONT && batt_vars->batt_dispatch == dispatch_interface::FOM_MANUAL) ||
+				(batt_vars->batt_meter_position == dispatch_interface::BEHIND && batt_vars->batt_dispatch == dispatch_interface::MANUAL))
 			{
 				batt_vars->batt_can_charge = vt.as_vector_bool("dispatch_manual_charge");
 				batt_vars->batt_can_discharge = vt.as_vector_bool("dispatch_manual_discharge");
@@ -600,16 +603,9 @@ battstor::battstor(var_table& vt, bool setup_model, size_t nrec, double dt_hr, b
 	else
 		batt_vars = batt_vars_in;
 
-	// component models
-	voltage_model = 0;
-	lifetime_model = 0;
-	lifetime_cycle_model = 0;
-	lifetime_calendar_model = 0;
-	thermal_model = 0;
+
 	battery_model = 0;
-	capacity_model = 0;
 	dispatch_model = 0;
-	losses_model = 0;
 	charge_control = 0;
 	battery_metrics = 0;
 
@@ -719,23 +715,23 @@ battstor::battstor(var_table& vt, bool setup_model, size_t nrec, double dt_hr, b
 	outGenPower = vt.allocate("pv_batt_gen", nrec*nyears);
 	outPVToGrid = vt.allocate("pv_to_grid", nrec*nyears);
 
-	if (batt_vars->batt_meter_position == dispatch_t::BEHIND)
+	if (batt_vars->batt_meter_position == dispatch_interface::BEHIND)
 	{
 		outPVToLoad = vt.allocate("pv_to_load", nrec*nyears);
 		outBatteryToLoad = vt.allocate("batt_to_load", nrec*nyears);
 		outGridToLoad = vt.allocate("grid_to_load", nrec*nyears);
 
-		if (batt_vars->batt_dispatch != dispatch_t::MANUAL)
+		if (batt_vars->batt_dispatch != dispatch_interface::MANUAL)
 		{
 			outGridPowerTarget = vt.allocate("grid_power_target", nrec*nyears);
 			outBattPowerTarget = vt.allocate("batt_power_target", nrec*nyears);
 		}
 	}
-	else if (batt_vars->batt_meter_position == dispatch_t::FRONT)
+	else if (batt_vars->batt_meter_position == dispatch_interface::FRONT)
 	{
 		outBatteryToGrid = vt.allocate("batt_to_grid", nrec*nyears);
 
-		if (batt_vars->batt_dispatch != dispatch_t::FOM_MANUAL) {
+		if (batt_vars->batt_dispatch != dispatch_interface::FOM_MANUAL) {
 			outCostToCycle = vt.allocate("batt_cost_to_cycle", nrec*nyears);
 			outBattPowerTarget = vt.allocate("batt_power_target", nrec*nyears);
 			outBenefitCharge = vt.allocate("batt_revenue_charge", nrec*nyears);
@@ -813,7 +809,7 @@ battstor::battstor(var_table& vt, bool setup_model, size_t nrec, double dt_hr, b
             batt_vars->cap_vs_temp);
 
 
-	battery_model = new battery_t(
+	battery_model_old = new battery_t(
 		dt_hr,
 		chem);
 
@@ -858,12 +854,27 @@ battstor::battstor(var_table& vt, bool setup_model, size_t nrec, double dt_hr, b
                                 batt_vars->batt_losses_charging, batt_vars->batt_losses_discharging,
                                 batt_vars->batt_losses_idle, batt_vars->batt_losses);
 
-	battery_model->initialize(capacity_model, voltage_model, lifetime_model, thermal_model, losses_model);
-	battery_metrics = new battery_metrics_t(dt_hr);
+    auto params = std::shared_ptr<battery_properties_params>(new battery_properties_params());
+    storage_time_params time = storage_time_params(nrec/8760, (size_t)vt.as_integer("analysis_period"));
+    params->initialize_from_data(vt, time);
+
+    battery_model_old->initialize(capacity_model, voltage_model, lifetime_model, thermal_model, losses_model);
+
+    battery_model = std::make_shared<battery>(params);
+
+    if (vt.as_integer("batt_replacement_option") > 0){
+        auto rep = std::shared_ptr<storage_replacement_params>(new storage_replacement_params());
+        rep->initialize_from_data(vt, !batt_vars->en_fuelcell);
+        battery_model->set_replacement_params(rep);
+    }
+
+
+    battery_metrics = new battery_metrics_t(dt_hr);
+    battery_metrics_old = new battery_metrics_t(dt_hr);
 
 	/*! Process the dispatch options and create the appropriate model */
-	if ((batt_vars->batt_meter_position == dispatch_t::BEHIND && batt_vars->batt_dispatch == dispatch_t::MANUAL) ||
-		(batt_vars->batt_meter_position == dispatch_t::FRONT && batt_vars->batt_dispatch == dispatch_t::FOM_MANUAL))
+	if ((batt_vars->batt_meter_position == dispatch_interface::BEHIND && batt_vars->batt_dispatch == dispatch_interface::MANUAL) ||
+		(batt_vars->batt_meter_position == dispatch_interface::FRONT && batt_vars->batt_dispatch == dispatch_interface::FOM_MANUAL))
 	{
 		/*! Generic manual dispatch model inputs */
 		if (batt_vars->batt_can_charge.size() != 6 || batt_vars->batt_can_discharge.size() != 6 || batt_vars->batt_can_gridcharge.size() != 6)
@@ -892,10 +903,10 @@ battstor::battstor(var_table& vt, bool setup_model, size_t nrec, double dt_hr, b
 				dm_percent_gridcharge[i + 1] = batt_vars->batt_gridcharge_percent[gridcharge_index++];
 		}
 		// Manual Dispatch Model
-		if ((batt_vars->batt_meter_position == dispatch_t::BEHIND && batt_vars->batt_dispatch == dispatch_t::MANUAL) || 
-			(batt_vars->batt_meter_position == dispatch_t::FRONT && batt_vars->batt_dispatch == dispatch_t::FOM_MANUAL))
+		if ((batt_vars->batt_meter_position == dispatch_interface::BEHIND && batt_vars->batt_dispatch == dispatch_interface::MANUAL) || 
+			(batt_vars->batt_meter_position == dispatch_interface::FRONT && batt_vars->batt_dispatch == dispatch_interface::FOM_MANUAL))
 		{
-			dispatch_model = new dispatch_manual_t(battery_model, dt_hr, batt_vars->batt_minimum_SOC, batt_vars->batt_maximum_SOC,
+			dispatch_model = new dispatch_manual(battery_model, dt_hr, batt_vars->batt_minimum_SOC, batt_vars->batt_maximum_SOC,
 				batt_vars->batt_current_choice,
 				batt_vars->batt_current_charge_max, batt_vars->batt_current_discharge_max,
 				batt_vars->batt_power_charge_max_kwdc, batt_vars->batt_power_discharge_max_kwdc,
@@ -905,10 +916,20 @@ battstor::battstor(var_table& vt, bool setup_model, size_t nrec, double dt_hr, b
 				batt_vars->batt_discharge_schedule_weekday, batt_vars->batt_discharge_schedule_weekend,
 				batt_vars->batt_can_charge, batt_vars->batt_can_discharge, batt_vars->batt_can_gridcharge, batt_vars->batt_can_fuelcellcharge, 
 				dm_percent_discharge, dm_percent_gridcharge);
+			dispatch_model_old = new dispatch_manual_t(battery_model_old, dt_hr, batt_vars->batt_minimum_SOC, batt_vars->batt_maximum_SOC,
+                                                     batt_vars->batt_current_choice,
+                                                     batt_vars->batt_current_charge_max, batt_vars->batt_current_discharge_max,
+                                                     batt_vars->batt_power_charge_max_kwdc, batt_vars->batt_power_discharge_max_kwdc,
+                                                     batt_vars->batt_power_charge_max_kwac, batt_vars->batt_power_discharge_max_kwac,
+                                                     batt_vars->batt_minimum_modetime,
+                                                     batt_vars->batt_dispatch, batt_vars->batt_meter_position,
+                                                     batt_vars->batt_discharge_schedule_weekday, batt_vars->batt_discharge_schedule_weekend,
+                                                     batt_vars->batt_can_charge, batt_vars->batt_can_discharge, batt_vars->batt_can_gridcharge, batt_vars->batt_can_fuelcellcharge,
+                                                     dm_percent_discharge, dm_percent_gridcharge);
 		}
 	}
 	/*! Front of meter automated DC-connected dispatch */
-	else if (batt_vars->batt_meter_position == dispatch_t::FRONT) 
+	else if (batt_vars->batt_meter_position == dispatch_interface::FRONT) 
 	{
 		double eta_discharge = batt_vars->batt_dc_dc_bms_efficiency * 0.01 * batt_vars->inverter_efficiency;
 		double eta_pvcharge = batt_vars->batt_dc_dc_bms_efficiency;
@@ -924,7 +945,7 @@ battstor::battstor(var_table& vt, bool setup_model, size_t nrec, double dt_hr, b
 		if (batt_vars->ec_rate_defined) {
 			utilityRate = new UtilityRate(batt_vars->ec_use_realtime, batt_vars->ec_weekday_schedule, batt_vars->ec_weekend_schedule, batt_vars->ec_tou_matrix, batt_vars->ec_realtime_buy);
 		}
-		dispatch_model = new dispatch_automatic_front_of_meter_t(battery_model, dt_hr, batt_vars->batt_minimum_SOC, batt_vars->batt_maximum_SOC,
+		dispatch_model = new dispatch_automatic_front_of_meter(battery_model, dt_hr, batt_vars->batt_minimum_SOC, batt_vars->batt_maximum_SOC,
 			batt_vars->batt_current_choice, batt_vars->batt_current_charge_max, batt_vars->batt_current_discharge_max,
 			batt_vars->batt_power_charge_max_kwdc, batt_vars->batt_power_discharge_max_kwdc,
 			batt_vars->batt_power_charge_max_kwac, batt_vars->batt_power_discharge_max_kwac,
@@ -937,9 +958,22 @@ battstor::battstor(var_table& vt, bool setup_model, size_t nrec, double dt_hr, b
 			batt_vars->ppa_price_series_dollar_per_kwh, utilityRate,
 			eta_pvcharge, eta_gridcharge , eta_discharge);
 
-		if (batt_vars->batt_dispatch == dispatch_t::CUSTOM_DISPATCH)
+        dispatch_model_old = new dispatch_automatic_front_of_meter_t(battery_model_old, dt_hr, batt_vars->batt_minimum_SOC, batt_vars->batt_maximum_SOC,
+                                                               batt_vars->batt_current_choice, batt_vars->batt_current_charge_max, batt_vars->batt_current_discharge_max,
+                                                               batt_vars->batt_power_charge_max_kwdc, batt_vars->batt_power_discharge_max_kwdc,
+                                                               batt_vars->batt_power_charge_max_kwac, batt_vars->batt_power_discharge_max_kwac,
+                                                               batt_vars->batt_minimum_modetime,
+                                                               batt_vars->batt_dispatch, batt_vars->batt_meter_position,
+                                                               nyears, batt_vars->batt_look_ahead_hours, batt_vars->batt_dispatch_update_frequency_hours,
+                                                               batt_vars->batt_dispatch_auto_can_charge, batt_vars->batt_dispatch_auto_can_clipcharge, batt_vars->batt_dispatch_auto_can_gridcharge, batt_vars->batt_dispatch_auto_can_fuelcellcharge,
+                                                               batt_vars->inverter_paco, batt_vars->batt_cost_per_kwh,
+                                                               batt_vars->batt_cycle_cost_choice, batt_vars->batt_cycle_cost,
+                                                               batt_vars->ppa_price_series_dollar_per_kwh, utilityRate,
+                                                               eta_pvcharge, eta_gridcharge , eta_discharge);
+
+		if (batt_vars->batt_dispatch == dispatch_interface::CUSTOM_DISPATCH)
 		{
-			if (dispatch_automatic_front_of_meter_t * dispatch_fom = dynamic_cast<dispatch_automatic_front_of_meter_t*>(dispatch_model))
+			if (dispatch_automatic_front_of_meter * dispatch_fom = dynamic_cast<dispatch_automatic_front_of_meter*>(dispatch_model))
 			{
 				if (batt_vars->batt_custom_dispatch.size() != 8760 * step_per_hour) {
 					throw exec_error("battery", "invalid custom dispatch, must be 8760 * steps_per_hour");
@@ -952,7 +986,7 @@ battstor::battstor(var_table& vt, bool setup_model, size_t nrec, double dt_hr, b
 	/*! Behind-the-meter automated dispatch for peak shaving */
 	else
 	{			
-		dispatch_model = new dispatch_automatic_behind_the_meter_t(battery_model, dt_hr, batt_vars->batt_minimum_SOC, batt_vars->batt_maximum_SOC,
+		dispatch_model = new dispatch_automatic_behind_the_meter(battery_model, dt_hr, batt_vars->batt_minimum_SOC, batt_vars->batt_maximum_SOC,
 			batt_vars->batt_current_choice, batt_vars->batt_current_charge_max, batt_vars->batt_current_discharge_max,
 			batt_vars->batt_power_charge_max_kwdc, batt_vars->batt_power_discharge_max_kwdc,
 			batt_vars->batt_power_charge_max_kwac, batt_vars->batt_power_discharge_max_kwac, 
@@ -961,9 +995,18 @@ battstor::battstor(var_table& vt, bool setup_model, size_t nrec, double dt_hr, b
 			batt_vars->batt_look_ahead_hours, batt_vars->batt_dispatch_update_frequency_hours,
 			batt_vars->batt_dispatch_auto_can_charge, batt_vars->batt_dispatch_auto_can_clipcharge, batt_vars->batt_dispatch_auto_can_gridcharge, batt_vars->batt_dispatch_auto_can_fuelcellcharge
 			);
-		if (batt_vars->batt_dispatch == dispatch_t::CUSTOM_DISPATCH)
+        dispatch_model_old = new dispatch_automatic_behind_the_meter_t(battery_model_old, dt_hr, batt_vars->batt_minimum_SOC, batt_vars->batt_maximum_SOC,
+                                                                 batt_vars->batt_current_choice, batt_vars->batt_current_charge_max, batt_vars->batt_current_discharge_max,
+                                                                 batt_vars->batt_power_charge_max_kwdc, batt_vars->batt_power_discharge_max_kwdc,
+                                                                 batt_vars->batt_power_charge_max_kwac, batt_vars->batt_power_discharge_max_kwac,
+                                                                 batt_vars->batt_minimum_modetime,
+                                                                 batt_vars->batt_dispatch, batt_vars->batt_meter_position, nyears,
+                                                                 batt_vars->batt_look_ahead_hours, batt_vars->batt_dispatch_update_frequency_hours,
+                                                                 batt_vars->batt_dispatch_auto_can_charge, batt_vars->batt_dispatch_auto_can_clipcharge, batt_vars->batt_dispatch_auto_can_gridcharge, batt_vars->batt_dispatch_auto_can_fuelcellcharge
+        );
+		if (batt_vars->batt_dispatch == dispatch_interface::CUSTOM_DISPATCH)
 		{
-			if (dispatch_automatic_behind_the_meter_t * dispatch_btm = dynamic_cast<dispatch_automatic_behind_the_meter_t*>(dispatch_model))
+			if (dispatch_automatic_behind_the_meter * dispatch_btm = dynamic_cast<dispatch_automatic_behind_the_meter*>(dispatch_model))
 			{
 				if (batt_vars->batt_custom_dispatch.size() != 8760 * step_per_hour) {
 					throw exec_error("battery", "invalid custom dispatch, must be 8760 * steps_per_hour");
@@ -974,10 +1017,12 @@ battstor::battstor(var_table& vt, bool setup_model, size_t nrec, double dt_hr, b
 	}
 
 	if (batt_vars->batt_topology == ChargeController::AC_CONNECTED) {
-		charge_control = new ACBatteryController(dispatch_model, battery_metrics, batt_vars->batt_ac_dc_efficiency, batt_vars->batt_dc_ac_efficiency);
+        charge_control_old = new ACBatteryController(dispatch_model_old, battery_metrics_old, batt_vars->batt_ac_dc_efficiency, batt_vars->batt_dc_ac_efficiency);
+        charge_control = new AC_charge_controller(dispatch_model, battery_metrics, batt_vars->batt_ac_dc_efficiency, batt_vars->batt_dc_ac_efficiency);
 	}
 	else if (batt_vars->batt_topology == ChargeController::DC_CONNECTED) {
-		charge_control = new DCBatteryController(dispatch_model, battery_metrics, batt_vars->batt_dc_dc_bms_efficiency, batt_vars->batt_inverter_efficiency_cutoff);
+        charge_control_old = new DCBatteryController(dispatch_model_old, battery_metrics_old, batt_vars->batt_dc_dc_bms_efficiency, batt_vars->batt_inverter_efficiency_cutoff);
+        charge_control = new DC_charge_controller(dispatch_model, battery_metrics, batt_vars->batt_dc_dc_bms_efficiency, batt_vars->batt_inverter_efficiency_cutoff);
 	}
 
 	parse_configuration();
@@ -989,36 +1034,36 @@ void battstor::parse_configuration()
 	int batt_meter_position = batt_vars->batt_meter_position;
 
 	// parse configuration
-	if (dynamic_cast<dispatch_automatic_t*>(dispatch_model))
+	if (dynamic_cast<dispatch_automatic*>(dispatch_model))
 	{
 		prediction_index = 0;
-		if (batt_meter_position == dispatch_t::BEHIND)
+		if (batt_meter_position == dispatch_interface::BEHIND)
 		{
-			if (batt_dispatch == dispatch_t::LOOK_AHEAD || batt_dispatch == dispatch_t::MAINTAIN_TARGET)
+			if (batt_dispatch == dispatch_interface::LOOK_AHEAD || batt_dispatch == dispatch_interface::MAINTAIN_TARGET)
 			{
 				look_ahead = true;
-				if (batt_dispatch == dispatch_t::MAINTAIN_TARGET)
+				if (batt_dispatch == dispatch_interface::MAINTAIN_TARGET)
 					input_target = true;
 			}
-			else if (batt_dispatch == dispatch_t::CUSTOM_DISPATCH)
+			else if (batt_dispatch == dispatch_interface::CUSTOM_DISPATCH)
 			{
 				input_custom_dispatch = true;
 			}
 			else
 				look_behind = true;
 		}
-		else if (batt_meter_position == dispatch_t::FRONT)
+		else if (batt_meter_position == dispatch_interface::FRONT)
 		{
-			if (batt_dispatch == dispatch_t::FOM_LOOK_AHEAD) {
+			if (batt_dispatch == dispatch_interface::FOM_LOOK_AHEAD) {
 				look_ahead = true;
 			}
-			else if (batt_dispatch == dispatch_t::FOM_LOOK_BEHIND) {
+			else if (batt_dispatch == dispatch_interface::FOM_LOOK_BEHIND) {
 				look_behind = true;
 			}
-			else if (batt_dispatch == dispatch_t::FOM_FORECAST) {
+			else if (batt_dispatch == dispatch_interface::FOM_FORECAST) {
 				input_forecast = true;
 			}
-			else if (batt_dispatch == dispatch_t::FOM_CUSTOM_DISPATCH) {
+			else if (batt_dispatch == dispatch_interface::FOM_CUSTOM_DISPATCH) {
 				input_custom_dispatch = true;
 			}
 		}
@@ -1029,7 +1074,7 @@ void battstor::parse_configuration()
 
 void battstor::initialize_automated_dispatch(std::vector<ssc_number_t> pv, std::vector<ssc_number_t> load, std::vector<ssc_number_t> cliploss)
 {
-	if (dynamic_cast<dispatch_automatic_t*>(dispatch_model))
+	if (dynamic_cast<dispatch_automatic*>(dispatch_model))
 	{
 		// automatic look ahead or behind
 		size_t nrec = nyears * 8760 * step_per_hour;
@@ -1123,18 +1168,28 @@ void battstor::initialize_automated_dispatch(std::vector<ssc_number_t> pv, std::
 				}
 			}
 
-			if (dispatch_automatic_behind_the_meter_t * automatic_dispatch_btm = dynamic_cast<dispatch_automatic_behind_the_meter_t*>(dispatch_model))
+			if (dispatch_automatic_behind_the_meter * automatic_dispatch_btm = dynamic_cast<dispatch_automatic_behind_the_meter*>(dispatch_model))
 			{
 				automatic_dispatch_btm->update_pv_data(pv_prediction);
 				automatic_dispatch_btm->update_load_data(load_prediction);
 
-				if (input_target)
+				auto automatic_dispatch_btm_old = dynamic_cast<dispatch_automatic_behind_the_meter_t*>(dispatch_model_old);
+                automatic_dispatch_btm_old->update_pv_data(pv_prediction);
+                automatic_dispatch_btm_old->update_load_data(load_prediction);
+
+				if (input_target){
 					automatic_dispatch_btm->set_target_power(target_power);
+                    automatic_dispatch_btm_old->set_target_power(target_power);
+                }
 			}
-			else if (dispatch_automatic_front_of_meter_t * automatic_dispatch_fom = dynamic_cast<dispatch_automatic_front_of_meter_t*>(dispatch_model))
+			else if (dispatch_automatic_front_of_meter * automatic_dispatch_fom = dynamic_cast<dispatch_automatic_front_of_meter*>(dispatch_model))
 			{
 				automatic_dispatch_fom->update_pv_data(pv_prediction);
 				automatic_dispatch_fom->update_cliploss_data(cliploss_prediction);
+
+                auto automatic_dispatch_fom_old = dynamic_cast<dispatch_automatic_front_of_meter*>(dispatch_model_old);
+                automatic_dispatch_fom_old->update_pv_data(pv_prediction);
+                automatic_dispatch_fom_old->update_cliploss_data(cliploss_prediction);
 			}
 		}
 	}
@@ -1146,7 +1201,6 @@ battstor::~battstor()
 	if( lifetime_cycle_model ) delete lifetime_cycle_model;
 	if (lifetime_calendar_model) delete lifetime_calendar_model;
 	if( thermal_model ) delete thermal_model;
-	if( battery_model ) delete battery_model;
 	if (battery_metrics) delete battery_metrics;
 	if( capacity_model ) delete capacity_model;
 	if (losses_model) delete losses_model;
@@ -1156,32 +1210,33 @@ battstor::~battstor()
 }
 
 battstor::battstor(const battstor& orig){
+    throw std::runtime_error("need to fix");
     if (orig.batt_vars) batt_vars = orig.batt_vars;
     if( orig.voltage_model ) voltage_model = orig.voltage_model->clone();
     if( orig.lifetime_cycle_model ) lifetime_cycle_model = orig.lifetime_cycle_model->clone();
     if (orig.lifetime_calendar_model) lifetime_calendar_model = orig.lifetime_calendar_model->clone();
     if( orig.thermal_model ) thermal_model = orig.thermal_model->clone();
 
-    if( orig.battery_model )  battery_model = new battery_t(*orig.battery_model);
+    if( orig.battery_model )  battery_model = std::shared_ptr<battery>(new battery(*orig.battery_model));
     if( orig.capacity_model ) capacity_model = orig.capacity_model->clone();
     if (orig.losses_model) losses_model = orig.losses_model->clone();
     if (orig.dispatch_model){
-        if (auto disp = dynamic_cast<dispatch_manual_t*>(orig.dispatch_model))
-            dispatch_model = new dispatch_manual_t(*disp);
-        else if (auto disp = dynamic_cast<dispatch_automatic_behind_the_meter_t*>(orig.dispatch_model))
-            dispatch_model = new dispatch_automatic_behind_the_meter_t(*disp);
-        else if (auto disp = dynamic_cast<dispatch_automatic_front_of_meter_t*>(orig.dispatch_model))
-            dispatch_model = new dispatch_automatic_front_of_meter_t(*disp);
+        if (auto disp = dynamic_cast<dispatch_manual*>(orig.dispatch_model))
+            dispatch_model = new dispatch_manual(*disp);
+        else if (auto disp = dynamic_cast<dispatch_automatic_behind_the_meter*>(orig.dispatch_model))
+            dispatch_model = new dispatch_automatic_behind_the_meter(*disp);
+        else if (auto disp = dynamic_cast<dispatch_automatic_front_of_meter*>(orig.dispatch_model))
+            dispatch_model = new dispatch_automatic_front_of_meter(*disp);
         else
             throw general_error("dispatch_model in battstor is not of recognized type.");
     }
     battery_metrics = new battery_metrics_t(orig._dt_hour);
     if (orig.charge_control){
         if (dynamic_cast<ACBatteryController*>(orig.charge_control))
-            charge_control = new ACBatteryController(dispatch_model, battery_metrics, batt_vars->batt_ac_dc_efficiency,
+            charge_control = new AC_charge_controller(dispatch_model, battery_metrics, batt_vars->batt_ac_dc_efficiency,
                     batt_vars->batt_dc_ac_efficiency);
         else if (dynamic_cast<DCBatteryController*>(orig.charge_control))
-            charge_control = new DCBatteryController(dispatch_model, battery_metrics, batt_vars->batt_dc_ac_efficiency,
+            charge_control = new DC_charge_controller(dispatch_model, battery_metrics, batt_vars->batt_dc_ac_efficiency,
                     batt_vars->batt_inverter_efficiency_cutoff);
         else
             throw general_error("charge_control in battstor is not of recognized type.");
@@ -1189,38 +1244,38 @@ battstor::battstor(const battstor& orig){
 }
 
 
-void battstor::check_replacement_schedule()
-{
-	if (batt_vars->batt_replacement_option == battery_t::REPLACE_BY_SCHEDULE)
-	{
-		// don't allow replacement on first hour of first year
-		if (hour == 0 && year == 0)
-			return;
-
-		bool replace = false;
-		if (year < batt_vars->batt_replacement_schedule.size())
-		{
-			size_t num_repl = (size_t)batt_vars->batt_replacement_schedule[year];
-			for (size_t j_repl = 0; j_repl < num_repl; j_repl++)
-			{
-				if ((hour == (j_repl * 8760 / num_repl)) && step == 0)
-				{
-					replace = true;
-					break;
-				}
-			}
-		}
-		if (replace) {
-			double replacement_percent = batt_vars->batt_replacement_schedule_percent[year];
-			force_replacement(replacement_percent);
-	}
-}
-}
-void battstor::force_replacement(double replacement_percent)
-{
-	lifetime_model->force_replacement(replacement_percent);
-	battery_model->runLifetimeModel(0);
-}
+//void battstor::check_replacement_schedule()
+//{
+//	if (batt_vars->batt_replacement_option == battery_t::REPLACE_BY_SCHEDULE)
+//	{
+//		// don't allow replacement on first hour of first year
+//		if (hour == 0 && year == 0)
+//			return;
+//
+//		bool replace = false;
+//		if (year < batt_vars->batt_replacement_schedule.size())
+//		{
+//			size_t num_repl = (size_t)batt_vars->batt_replacement_schedule[year];
+//			for (size_t j_repl = 0; j_repl < num_repl; j_repl++)
+//			{
+//				if ((hour == (j_repl * 8760 / num_repl)) && step == 0)
+//				{
+//					replace = true;
+//					break;
+//				}
+//			}
+//		}
+//		if (replace) {
+//			double replacement_percent = batt_vars->batt_replacement_schedule_percent[year];
+//			force_replacement(replacement_percent);
+//	}
+//}
+//}
+//void battstor::force_replacement(double replacement_percent)
+//{
+//	lifetime_model->force_replacement(replacement_percent);
+//	battery_model->runLifetimeModel(0);
+//}
 
 void battstor::initialize_time(size_t year_in, size_t hour_of_year, size_t step_of_hour)
 {
@@ -1234,19 +1289,35 @@ void battstor::initialize_time(size_t year_in, size_t hour_of_year, size_t step_
 void battstor::advance(var_table *vt, double P_gen, double V_gen, double P_load, double P_gen_clipped )
 {
 	BatteryPower * powerflow = dispatch_model->getBatteryPower();
-	powerflow->reset();
+    BatteryPower * powerflow_old = dispatch_model_old->getBatteryPower();
+
+    powerflow->reset();
+    powerflow_old->reset();
 
 	if (index < fuelcellPower.size()) {
-		powerflow->powerFuelCell = fuelcellPower[index];
+        powerflow->powerFuelCell = fuelcellPower[index];
+        powerflow_old->powerFuelCell = fuelcellPower[index];
 	}
 
 	powerflow->powerGeneratedBySystem = P_gen;
-	powerflow->powerPV = P_gen - powerflow->powerFuelCell;
-	powerflow->powerLoad = P_load;
-	powerflow->voltageSystem = V_gen;
-	powerflow->powerPVClipped = P_gen_clipped;
+    powerflow->powerPV = P_gen - powerflow->powerFuelCell;
+    powerflow->powerLoad = P_load;
+    powerflow->voltageSystem = V_gen;
+    powerflow->powerPVClipped = P_gen_clipped;
+
+    powerflow_old->powerGeneratedBySystem = P_gen;
+    powerflow_old->powerPV = P_gen - powerflow_old->powerFuelCell;
+    powerflow_old->powerLoad = P_load;
+    powerflow_old->voltageSystem = V_gen;
+    powerflow_old->powerPVClipped = P_gen_clipped;
 
 	charge_control->run(year, hour, step, year_index);
+    charge_control_old->run(year, hour, step, year_index);
+
+
+    std::cerr << "battsor advance: " << dispatch_model->power_tofrom_battery() << ", " << dispatch_model->power_tofrom_grid();
+	std::cerr << ", " << dispatch_model->power_gen()  << ", " << dispatch_model->power_pv_to_batt()  << ", " << dispatch_model->power_grid_to_batt() << "\n";
+
 	outputs_fixed(vt);
     outputs_topology_dependent();
     metrics();
@@ -1272,21 +1343,21 @@ void battstor::outputs_fixed(var_table *vt)
 		outMaxChargeThermal[index] = (ssc_number_t)(capacity_model->qmax_thermal());
 	
 		outBatteryTemperature[index] = (ssc_number_t)(thermal_model->get_T_battery() - 273.15);
-		outCapacityThermalPercent[index] = (ssc_number_t)(thermal_model->capacity_percent());
+		outCapacityThermalPercent[index] = (ssc_number_t)(battery_model->get_capacity_percent_thermal());
 	}
 
 	// Lifetime outputs
-	outTotalCharge[index] = (ssc_number_t)(capacity_model->q0());
-	outCurrent[index] = (ssc_number_t)(capacity_model->I());
-	outBatteryVoltage[index] = (ssc_number_t)(voltage_model->battery_voltage());
+	outTotalCharge[index] = (ssc_number_t)(battery_model->get_q0());
+	outCurrent[index] = (ssc_number_t)(battery_model->get_I());
+	outBatteryVoltage[index] = (ssc_number_t)(battery_model->get_V());
 
-	outCycles[index] = (ssc_number_t)(lifetime_cycle_model->cycles_elapsed());
-	outSOC[index] = (ssc_number_t)(capacity_model->SOC());
-	outDOD[index] = (ssc_number_t)(lifetime_cycle_model->cycle_range());
-	outDODCycleAverage[index] = (ssc_number_t)(lifetime_cycle_model->average_range());
-	outCapacityPercent[index] = (ssc_number_t)(lifetime_model->capacity_percent());
-	outCapacityPercentCycle[index] = (ssc_number_t)(lifetime_model->capacity_percent_cycle());
-	outCapacityPercentCalendar[index] = (ssc_number_t)(lifetime_model->capacity_percent_calendar());
+	outCycles[index] = (ssc_number_t)(battery_model->get_cycles_elapsed());
+	outSOC[index] = (ssc_number_t)(battery_model->get_SOC());
+	outDOD[index] = (ssc_number_t)(battery_model->get_cycle_range());
+	outDODCycleAverage[index] = (ssc_number_t)(battery_model->get_avg_cycle_range());
+	outCapacityPercent[index] = (ssc_number_t)(battery_model->get_capacity_percent_lifetime());
+	outCapacityPercentCycle[index] = (ssc_number_t)(battery_model->get_capacity_percent_cycle());
+	outCapacityPercentCalendar[index] = (ssc_number_t)(battery_model->get_capacity_percent_calendar());
 
 }
  
@@ -1309,25 +1380,25 @@ void battstor::outputs_topology_dependent()
 	outBatterySystemLoss[index] = (ssc_number_t)(dispatch_model->power_system_loss());
 	outPVToGrid[index] = (ssc_number_t)(dispatch_model->power_pv_to_grid());
 
-	if (batt_vars->batt_meter_position == dispatch_t::BEHIND)
+	if (batt_vars->batt_meter_position == dispatch_interface::BEHIND)
 	{
 		outPVToLoad[index] = (ssc_number_t)(dispatch_model->power_pv_to_load());
 		outBatteryToLoad[index] = (ssc_number_t)(dispatch_model->power_battery_to_load());
 		outGridToLoad[index] = (ssc_number_t)(dispatch_model->power_grid_to_load());
 
-		if (batt_vars->batt_dispatch != dispatch_t::MANUAL)
+		if (batt_vars->batt_dispatch != dispatch_interface::MANUAL)
 		{
 			outGridPowerTarget[index] = (ssc_number_t)(dispatch_model->power_grid_target());
 			outBattPowerTarget[index] = (ssc_number_t)(dispatch_model->power_batt_target());
 		}
 
 	}
-	else if (batt_vars->batt_meter_position == dispatch_t::FRONT)
+	else if (batt_vars->batt_meter_position == dispatch_interface::FRONT)
 	{
 		outBatteryToGrid[index] = (ssc_number_t)(dispatch_model->power_battery_to_grid());
 
-		if (batt_vars->batt_dispatch != dispatch_t::FOM_MANUAL) {
-			dispatch_automatic_front_of_meter_t * dispatch_fom = dynamic_cast<dispatch_automatic_front_of_meter_t *>(dispatch_model);
+		if (batt_vars->batt_dispatch != dispatch_interface::FOM_MANUAL) {
+			dispatch_automatic_front_of_meter * dispatch_fom = dynamic_cast<dispatch_automatic_front_of_meter *>(dispatch_model);
 			outCostToCycle[index] = (ssc_number_t)(dispatch_model->cost_to_cycle());
 			outBattPowerTarget[index] = (ssc_number_t)(dispatch_model->power_batt_target());
 			outBenefitCharge[index] = (ssc_number_t)(dispatch_fom->benefit_charge());
@@ -1342,7 +1413,7 @@ void battstor::metrics()
 {
 	size_t annual_index;
 	nyears > 1 ? annual_index = year + 1 : annual_index = 0;
-	outBatteryBankReplacement[annual_index] = (ssc_number_t)(lifetime_model->get_replacements());
+	outBatteryBankReplacement[annual_index] = (ssc_number_t)(battery_model->get_n_replacements());
 
 	if ((hour == 8759) && (step == step_per_hour - 1))
 	{
@@ -1380,7 +1451,7 @@ void battstor::metrics()
 		outPVChargePercent = 0;
 }
 
-// function needed to correctly calculate P_grid to to additional losses in P_gen post battery like wiring, curtailment, availablity
+// function needed to correctly calculate P_grid to to additional losses in P_gen post battery like wiring, curtailment, availability
 void battstor::update_grid_power(compute_module &, double P_gen_ac, double P_load_ac, size_t index_replace)
 {
 	double P_grid = P_gen_ac - P_load_ac;
@@ -1400,13 +1471,13 @@ void battstor::calculate_monthly_and_annual_outputs( compute_module &cm )
 	cm.accumulate_monthly_for_year("grid_to_batt", "monthly_grid_to_batt", _dt_hour, step_per_hour);
 	cm.accumulate_monthly_for_year("pv_to_grid", "monthly_pv_to_grid", _dt_hour, step_per_hour);
 
-	if (batt_vars->batt_meter_position == dispatch_t::BEHIND)
+	if (batt_vars->batt_meter_position == dispatch_interface::BEHIND)
 	{
 		cm.accumulate_monthly_for_year("pv_to_load", "monthly_pv_to_load", _dt_hour, step_per_hour);
 		cm.accumulate_monthly_for_year("batt_to_load", "monthly_batt_to_load", _dt_hour, step_per_hour);
 		cm.accumulate_monthly_for_year("grid_to_load", "monthly_grid_to_load", _dt_hour, step_per_hour);
 	}
-	else if (batt_vars->batt_meter_position == dispatch_t::FRONT)
+	else if (batt_vars->batt_meter_position == dispatch_interface::FRONT)
 	{
 		cm.accumulate_monthly_for_year("batt_to_grid", "monthly_batt_to_grid", _dt_hour, step_per_hour);
 	}
@@ -1524,12 +1595,13 @@ public:
 							throw exec_error("battery", "simulation canceled at hour " + util::to_string(hour + 1.0));
 						}
 					}
+                    std::cerr << hour << ": "; //\n---------------\n";
 
 					for (size_t jj = 0; jj < batt.step_per_hour; jj++)
 					{
 	
 						batt.initialize_time(year, hour, jj);
-						batt.check_replacement_schedule();
+//						batt.check_replacement_schedule();
 						batt.advance(m_vartab, power_input_lifetime[lifetime_idx], 0, load_lifetime[lifetime_idx], 0);
 						p_gen[lifetime_idx] = batt.outGenPower[lifetime_idx];
 						if (year == 0) {
@@ -1537,6 +1609,18 @@ public:
 						}
 						lifetime_idx++;
 					}
+                    std::cerr << (abs(batt.dispatch_model_old->getBatteryPower()->powerPVToBattery - batt.dispatch_model->getBatteryPower()->powerPVToBattery)) << ", ";
+                    std::cerr << (abs(batt.dispatch_model_old->getBatteryPower()->powerBatteryToLoad - batt.dispatch_model->getBatteryPower()->powerBatteryToLoad)) << ", ";
+                    std::cerr << (abs(batt.dispatch_model_old->getBatteryPower()->powerBatteryTarget - batt.dispatch_model->getBatteryPower()->powerBatteryTarget)) << ", ";
+                    std::cerr << (abs(batt.dispatch_model_old->getBatteryPower()->powerBatteryDC - batt.dispatch_model->getBatteryPower()->powerBatteryDC)) << ", ";
+                    std::cerr << (abs(batt.dispatch_model_old->getBatteryPower()->powerGridToBattery - batt.dispatch_model->getBatteryPower()->powerGridToBattery)) << ", ";
+                    std::cerr << (abs(batt.dispatch_model_old->getBatteryPower()->powerGridToLoad - batt.dispatch_model->getBatteryPower()->powerGridToLoad)) << ", ";
+                    std::cerr << (abs(batt.dispatch_model_old->getBatteryPower()->powerPVToLoad - batt.dispatch_model->getBatteryPower()->powerPVToLoad)) << "\n";
+					if (hour % 240 == 0)
+					    int x = 0;
+					if (hour == 3799)
+					    int x = 0;
+//					std::cerr <<"\n\n";
 				}
 			}
             process_messages(&batt, this);

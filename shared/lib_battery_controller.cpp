@@ -1,35 +1,35 @@
+#include "lib_dispatch.h"
 #include "lib_battery_dispatch.h"
 #include "lib_battery_powerflow.h"
-#include "lib_power_electronics.h"
-#include "lib_dispatch.h"
+#include "lib_battery_controller.h"
 
-double BatteryBidirectionalInverter::convert_to_dc(double P_ac, double * P_dc)
+double bidir_inverter::convert_to_dc(double P_ac, double * P_dc)
 {
     double P_loss = P_ac * (1 - _ac_dc_efficiency);
     *P_dc = P_ac * _ac_dc_efficiency;
     return P_loss;
 }
-double BatteryBidirectionalInverter::convert_to_ac(double P_dc, double * P_ac)
+double bidir_inverter::convert_to_ac(double P_dc, double * P_ac)
 {
     double P_loss = P_dc * (1 - _dc_ac_efficiency);
     *P_ac = P_dc * _dc_ac_efficiency;
     return P_loss;
 }
-double BatteryBidirectionalInverter::compute_dc_from_ac(double P_ac)
+double bidir_inverter::compute_dc_from_ac(double P_ac)
 {
     return P_ac / _dc_ac_efficiency;
 }
 
-double BatteryRectifier::convert_to_dc(double P_ac, double * P_dc)
+double battery_rectifier::convert_to_dc(double P_ac, double * P_dc)
 {
     double P_loss = P_ac * (1 - _ac_dc_efficiency);
     *P_dc = P_ac * _ac_dc_efficiency;
     return P_loss;
 }
 
-ChargeController::ChargeController(dispatch_interface *dispatch, battery_metrics_t * battery_metrics) :
-        m_batteryMetrics(battery_metrics),
-        m_dispatch(dispatch)
+AC_charge_controller::AC_charge_controller(dispatch_interface *dispatch, battery_metrics_t * battery_metrics, double efficiencyACToDC, double efficiencyDCToAC):
+m_dispatch(dispatch),
+m_batteryMetrics(battery_metrics)
 {
     if (dynamic_cast<dispatch_manual*>(m_dispatch)) {
         std::unique_ptr<dispatch_interface> tmp2(new dispatch_manual(*dispatch));
@@ -39,23 +39,20 @@ ChargeController::ChargeController(dispatch_interface *dispatch, battery_metrics
         std::unique_ptr<dispatch_interface> tmp3(new dispatch_automatic_behind_the_meter(*dispatch));
         m_dispatchInitial = std::move(tmp3);
     }
-    if (dynamic_cast<dispatch_automatic_front_of_meter_t*>(m_dispatch)) {
+    if (dynamic_cast<dispatch_automatic_front_of_meter*>(m_dispatch)) {
         std::unique_ptr<dispatch_interface> tmp4(new dispatch_automatic_front_of_meter(*dispatch));
         m_dispatchInitial = std::move(tmp4);
     }
-}
 
-ACBatteryController::ACBatteryController(dispatch_interface *dispatch, battery_metrics_t * battery_metrics, double efficiencyACToDC, double efficiencyDCToAC) : ChargeController(dispatch, battery_metrics)
-{
-    std::unique_ptr<BatteryBidirectionalInverter> tmp(new BatteryBidirectionalInverter(efficiencyACToDC, efficiencyDCToAC));
+    std::unique_ptr<bidir_inverter> tmp(new bidir_inverter(efficiencyACToDC, efficiencyDCToAC));
     m_bidirectionalInverter = std::move(tmp);
     m_batteryPower = dispatch->getBatteryPower();
-    m_batteryPower->connectionMode = ChargeController::AC_CONNECTED;
+    m_batteryPower->connectionMode = charge_controller_interface::AC_CONNECTED;
     m_batteryPower->singlePointEfficiencyACToDC = m_bidirectionalInverter->ac_dc_efficiency();
     m_batteryPower->singlePointEfficiencyDCToAC = m_bidirectionalInverter->dc_ac_efficiency();
 }
 
-void ACBatteryController::run(size_t year, size_t hour_of_year, size_t step_of_hour, size_t)
+void AC_charge_controller::run(size_t year, size_t hour_of_year, size_t step_of_hour, size_t)
 {
     if (m_batteryPower->powerPV < 0)
     {
@@ -74,23 +71,37 @@ void ACBatteryController::run(size_t year, size_t hour_of_year, size_t step_of_h
     m_batteryMetrics->compute_metrics_ac(m_dispatch->getBatteryPower());
 }
 
-DCBatteryController::DCBatteryController(dispatch_interface *dispatch, battery_metrics_t * battery_metrics, double efficiencyDCToDC, double inverterEfficiencyCutoff)
-        : ChargeController(dispatch, battery_metrics)
+DC_charge_controller::DC_charge_controller(dispatch_interface *dispatch, battery_metrics_t * battery_metrics, double efficiencyDCToDC, double inverterEfficiencyCutoff):
+        m_dispatch(dispatch),
+        m_batteryMetrics(battery_metrics)
 {
-    std::unique_ptr<Battery_DC_DC_ChargeController> tmp(new Battery_DC_DC_ChargeController(efficiencyDCToDC, 100));
-    m_DCDCChargeController = std::move(tmp);
+    if (dynamic_cast<dispatch_manual*>(m_dispatch)) {
+        std::unique_ptr<dispatch_interface> tmp2(new dispatch_manual(*dispatch));
+        m_dispatchInitial = std::move(tmp2);
+    }
+    if (dynamic_cast<dispatch_automatic_behind_the_meter*>(m_dispatch)) {
+        std::unique_ptr<dispatch_interface> tmp3(new dispatch_automatic_behind_the_meter(*dispatch));
+        m_dispatchInitial = std::move(tmp3);
+    }
+    if (dynamic_cast<dispatch_automatic_front_of_meter*>(m_dispatch)) {
+        std::unique_ptr<dispatch_interface> tmp4(new dispatch_automatic_front_of_meter(*dispatch));
+        m_dispatchInitial = std::move(tmp4);
+    }
+
+    std::unique_ptr<DC_DC_charge_controller> tmp(new DC_DC_charge_controller(efficiencyDCToDC, 100));
+    m_DCDCcharge_controller = std::move(tmp);
     m_batteryPower = dispatch->getBatteryPower();
-    m_batteryPower->connectionMode = ChargeController::DC_CONNECTED;
-    m_batteryPower->singlePointEfficiencyDCToDC = m_DCDCChargeController->batt_dc_dc_bms_efficiency();
+    m_batteryPower->connectionMode = charge_controller_interface::DC_CONNECTED;
+    m_batteryPower->singlePointEfficiencyDCToDC = m_DCDCcharge_controller->batt_dc_dc_bms_efficiency();
     m_batteryPower->inverterEfficiencyCutoff = inverterEfficiencyCutoff;
 }
 
-void DCBatteryController::setSharedInverter(SharedInverter * sharedInverter)
+void DC_charge_controller::setSharedInverter(SharedInverter * sharedInverter)
 {
     m_batteryPower->setSharedInverter(sharedInverter);
 }
 
-void DCBatteryController::run(size_t year, size_t hour_of_year, size_t step_of_hour, size_t)
+void DC_charge_controller::run(size_t year, size_t hour_of_year, size_t step_of_hour, size_t)
 {
     if (m_batteryPower->powerPV < 0){
         m_batteryPower->powerPV = 0;

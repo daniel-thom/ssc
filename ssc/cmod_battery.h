@@ -35,11 +35,14 @@ class lifetime_cycle_t;
 class lifetime_calendar_t;
 class thermal_t;
 class capacity_t;
+class battery;
 class battery_t;
 class battery_metrics_t;
 class dispatch_t;
+class dispatch_interface;
 class losses_t;
 class ChargeController;
+class charge_controller_interface;
 class UtilityRate;
 
 extern var_info vtab_battery_inputs[];
@@ -267,8 +270,8 @@ struct battstor
 	bool input_custom_dispatch = false;
 
 	// for user schedule
-	void force_replacement(double replacement_percent);
-	void check_replacement_schedule();
+//	void force_replacement(double replacement_percent);
+//	void check_replacement_schedule();
 	void calculate_monthly_and_annual_outputs( compute_module &cm );
 
 	// time quantities
@@ -291,12 +294,16 @@ struct battstor
 	lifetime_calendar_t *lifetime_calendar_model;
 	thermal_t *thermal_model;
 	capacity_t *capacity_model;
-	battery_t *battery_model;
+	battery_t* battery_model_old;
+    std::shared_ptr<battery> battery_model;
 	battery_metrics_t *battery_metrics;
-	dispatch_t *dispatch_model;
+    battery_metrics_t *battery_metrics_old;
+    dispatch_t *dispatch_model_old;
+	dispatch_interface *dispatch_model;
 	losses_t *losses_model;
-	ChargeController *charge_control;
-	UtilityRate * utilityRate;
+	ChargeController *charge_control_old;
+    charge_controller_interface *charge_control;
+    UtilityRate * utilityRate;
 	
 	bool en;
 	int chem;

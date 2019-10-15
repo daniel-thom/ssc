@@ -25,14 +25,13 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // Required due to need for complete type in std::unique_ptr<>
 #include "lib_shared_inverter.h"
-#include "lib_battery_dispatch.h"
 #include "lib_dispatch.h"
 
-class BatteryBidirectionalInverter
+class bidir_inverter
 {
 public:
 
-    BatteryBidirectionalInverter(double ac_dc_efficiency, double dc_ac_efficiency)
+    bidir_inverter(double ac_dc_efficiency, double dc_ac_efficiency)
     {
         _dc_ac_efficiency = 0.01*dc_ac_efficiency;
         _ac_dc_efficiency = 0.01*ac_dc_efficiency;
@@ -58,11 +57,11 @@ protected:
     double _loss_ac_dc;
 };
 
-class Battery_DC_DC_ChargeController
+class DC_DC_charge_controller
 {
 public:
 
-    Battery_DC_DC_ChargeController(double batt_dc_dc_bms_efficiency, double pv_dc_dc_mppt_efficiency)
+    DC_DC_charge_controller(double batt_dc_dc_bms_efficiency, double pv_dc_dc_mppt_efficiency)
     {
         _batt_dc_dc_bms_efficiency = 0.01*batt_dc_dc_bms_efficiency;
         _pv_dc_dc_mppt_efficiency = 0.01*pv_dc_dc_mppt_efficiency;
@@ -79,11 +78,11 @@ protected:
     double _loss_dc_dc;
 };
 
-class BatteryRectifier
+class battery_rectifier
 {
 public:
     // don't know if I need this component in AC or DC charge controllers
-    BatteryRectifier(double ac_dc_efficiency) { _ac_dc_efficiency = 0.01 * ac_dc_efficiency; }
+    battery_rectifier(double ac_dc_efficiency) { _ac_dc_efficiency = 0.01 * ac_dc_efficiency; }
     double ac_dc_efficiency() { return _ac_dc_efficiency; }
 
     // return power loss [kW]
@@ -96,31 +95,53 @@ protected:
 
 /**
 *
-* \class ChargeController
+* \class charge_controller_interface
 *
-*  A ChargeController is a mostly abstract base class which defines the structure of battery charge controllers
-*  The ChargeController requires information about the battery dispatch.  At every time step, the charge controller
-*  runs the dispatch model and returns to the calling function.  While the ChargeController may seem to be an unnecessary
+*  A charge_controller is a mostly abstract base class which defines the structure of battery charge controllers
+*  The charge_controller requires information about the battery dispatch.  At every time step, the charge controller
+*  runs the dispatch model and returns to the calling function.  While the charge_controller may seem to be an unnecessary
 *  step in the calculation, it provides a location to store the initial dispatch in a timestep, and iterate upon that dispatch
 *  if necessary.  It also houses the framework of battery power electronics components, which currently have single-point
 *  efficiencies, but could be expanded to have more detailed models.
 */
-class ChargeController
+class charge_controller_interface
 {
 public:
-    /// Construct an ChargeController with a dispatch object, battery metrics object
-    ChargeController(dispatch_interface *dispatch, battery_metrics_t * battery_metrics);
+    /// Construct an charge_controller with a dispatch object, battery metrics object
+    charge_controller_interface() = default;
 
-    /// Virtual destructor for ChargeController
-    virtual ~ChargeController() {};
+    /// Virtual destructor for charge_controller
+    virtual ~charge_controller_interface() {};
 
     /// Virtual method to run the charge controller given the current timestep, PV production, and load
     virtual void run(size_t year, size_t hour_of_year, size_t step_of_hour, size_t index) = 0;
 
     /// The supported configurations of a battery system
     enum CONNECTION{ DC_CONNECTED, AC_CONNECTED };
+};
 
-protected:
+/**
+*
+* \class AC_charge_controller
+*
+*  A AC_charge_controller is derived from the charge_controller, and contains information specific to a battery connected on the AC-side
+*  of a power generating source.  It requires information about the efficiency to convert power from AC to DC and back to AC.
+*/
+class AC_charge_controller : public charge_controller_interface
+{
+public:
+    /// Construct an AC_charge_controller with a dispatch object, battery metrics object, and single-point efficiencies for the battery bidirectional inverter
+    AC_charge_controller(dispatch_interface *dispatch, battery_metrics_t * battery_metrics, double efficiencyACToDC, double efficiencyDCToAC);
+
+    /// Destroy the AC_charge_controller
+    ~AC_charge_controller() {};
+
+    /// Runs the battery dispatch model with the current PV and Load information
+    void run(size_t year, size_t hour_of_year, size_t step_of_hour, size_t index);
+
+private:
+    // allocated and managed internally
+    std::unique_ptr<bidir_inverter> m_bidirectionalInverter;  /// Model for the battery bi-directional inverter
 
     // allocated and managed internally
     std::unique_ptr<dispatch_interface> m_dispatchInitial;	/// An internally managed copy of the initial dispatch of the timestep
@@ -133,43 +154,19 @@ protected:
 
 /**
 *
-* \class ACBatteryController
+* \class DC_charge_controller
 *
-*  A ACBatteryController is derived from the ChargeController, and contains information specific to a battery connected on the AC-side
-*  of a power generating source.  It requires information about the efficiency to convert power from AC to DC and back to AC.
-*/
-class ACBatteryController : public ChargeController
-{
-public:
-    /// Construct an ACBatteryController with a dispatch object, battery metrics object, and single-point efficiencies for the battery bidirectional inverter
-    ACBatteryController(dispatch_interface *dispatch, battery_metrics_t * battery_metrics, double efficiencyACToDC, double efficiencyDCToAC);
-
-    /// Destroy the ACBatteryController
-    ~ACBatteryController() {};
-
-    /// Runs the battery dispatch model with the current PV and Load information
-    void run(size_t year, size_t hour_of_year, size_t step_of_hour, size_t index);
-
-private:
-    // allocated and managed internally
-    std::unique_ptr<BatteryBidirectionalInverter> m_bidirectionalInverter;  /// Model for the battery bi-directional inverter
-};
-
-/**
-*
-* \class DCBatteryController
-*
-*  A DCBatteryController is derived from the ChargeController, and contains information specific to a battery connected on the DC-side
+*  A DC_charge_controller is derived from the charge_controller, and contains information specific to a battery connected on the DC-side
 *  of a power generating source.  It requires information about the efficiency to convert power from DC to DC between the battery and DC source
 */
-class DCBatteryController : public ChargeController
+class DC_charge_controller : public charge_controller_interface
 {
 public:
-    /// Construct a DCBatteryController with a dispatch object, battery metrics object, and single-point efficiency for the battery charge controller
-    DCBatteryController(dispatch_interface *dispatch, battery_metrics_t * battery_metrics, double efficiencyDCToDC, double inverterEfficiencyCutoff);
+    /// Construct a DC_charge_controller with a dispatch object, battery metrics object, and single-point efficiency for the battery charge controller
+    DC_charge_controller(dispatch_interface *dispatch, battery_metrics_t * battery_metrics, double efficiencyDCToDC, double inverterEfficiencyCutoff);
 
-    /// Destroy the DCBatteryController object
-    ~DCBatteryController() {};
+    /// Destroy the DC_charge_controller object
+    ~DC_charge_controller() {};
 
     /// Sets the shared inverter used by the PV and battery system
     void setSharedInverter(SharedInverter * sharedInverter);
@@ -180,8 +177,15 @@ public:
 private:
 
     // allocated and managed internally
-    std::unique_ptr<Battery_DC_DC_ChargeController> m_DCDCChargeController;  /// Model for the battery DC/DC charge controller with Battery Management System
+    std::unique_ptr<DC_DC_charge_controller> m_DCDCcharge_controller;  /// Model for the battery DC/DC charge controller with Battery Management System
 
+    // allocated and managed internally
+    std::unique_ptr<dispatch_interface> m_dispatchInitial;	/// An internally managed copy of the initial dispatch of the timestep
+
+    // memory managed elsewhere
+    BatteryPower * m_batteryPower;
+    battery_metrics_t *m_batteryMetrics;    /// An object that tracks battery metrics for later analysis
+    dispatch_interface *m_dispatch;		/// An object containing the framework to run a battery and check operational constraints
 };
 
 

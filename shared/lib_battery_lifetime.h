@@ -40,6 +40,10 @@ public:
 
     double get_relative_q(){return state.relative_q;}
 
+    double get_cycle_range(){return state.Range;}
+
+    double get_avg_cycle_range(){return state.average_range;}
+
     size_t get_cycles_elapsed(){return state.nCycles;}
 
     cycle_lifetime_state get_state(){return state; };
@@ -168,7 +172,15 @@ public:
     /// Return the relative capacity percentage of nominal (%)
     double get_capacity_percent() {return relative_q;}
 
+    double get_capacity_percent_cycle() {return cycle_model->get_relative_q();}
+
+    double get_capacity_percent_calendar() {return calendar_model->get_relative_q();}
+
     size_t get_cycles_elapsed() {return cycle_model->get_cycles_elapsed();}
+
+    double get_cycle_range() {return cycle_model->get_cycle_range();}
+
+    double get_avg_cycle_range() {return cycle_model->get_avg_cycle_range();}
 
     void set_state(const lifetime_state& s) {
         cycle_model->set_state(s.cycle);

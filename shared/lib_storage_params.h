@@ -7,7 +7,7 @@
 #include "lib_util.h"
 
 const double low_tolerance = 0.01;
-const double tolerance = 0.001;
+const double tolerance = 0.0001;
 
 struct storage_config_params
 {

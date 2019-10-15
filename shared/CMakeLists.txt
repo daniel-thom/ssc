@@ -72,6 +72,7 @@ set(SHARED_SRC
 	lib_dispatch_params.cpp
 	lib_dispatch.cpp
 	lib_dispatch_powerflow.cpp
+	lib_battery_controller.cpp
 	vartab.cpp
 		)
 
