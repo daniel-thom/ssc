@@ -776,7 +776,7 @@ TEST_F(CMPvsamv1_cmod_pvsamv1, AcCoupledBatteryLookAhead) {
 
     EXPECT_NEAR(batt_capacity_percent_total, 869277.80, 869277 * 1e-3) << "Ac-coupled look ahead";
     EXPECT_NEAR(batt_cycles_total, 1809744, 1809744 * 1e-3) << "Ac-coupled look ahead";
-    EXPECT_NEAR(batt_power_total, -147.02, -147 * 1e-3) << "Ac-coupled look ahead";
+    EXPECT_NEAR(batt_power_total, -147.02, 147 * 1e-3) << "Ac-coupled look ahead";
     EXPECT_NEAR(grid_power_total, 2589.66, 2589 * 1e-3) << "Ac-coupled look ahead";
     EXPECT_NEAR(batt_to_load_total, 1327.29, 1327 * 1e-3) << "Ac-coupled look ahead";
     EXPECT_NEAR(pv_to_batt_total, 1474.28, 1474 * 1e-3) << "Ac-coupled look ahead";
