@@ -18,7 +18,7 @@ dt_sec(params->time->dt_hour * 3600){
     state.next_time_at_current_T_room = dt_sec;
 
     // exp(-A*h*t/m/Cp) < tol
-    t_threshold = -params->mass * params->Cp / params->surface_area / params->h * log(tolerance) + dt_sec;
+    t_threshold = -params->mass * params->Cp / params->surface_area / params->h * log(10) + dt_sec;
 }
 
 battery_thermal::battery_thermal(const battery_thermal& thermal):

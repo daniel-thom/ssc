@@ -973,12 +973,15 @@ battstor::battstor(var_table& vt, bool setup_model, size_t nrec, double dt_hr, b
 
 		if (batt_vars->batt_dispatch == dispatch_interface::CUSTOM_DISPATCH)
 		{
-			if (dispatch_automatic_front_of_meter * dispatch_fom = dynamic_cast<dispatch_automatic_front_of_meter*>(dispatch_model))
+			if (auto dispatch_fom = dynamic_cast<dispatch_automatic_front_of_meter*>(dispatch_model))
 			{
 				if (batt_vars->batt_custom_dispatch.size() != 8760 * step_per_hour) {
 					throw exec_error("battery", "invalid custom dispatch, must be 8760 * steps_per_hour");
 				}
-				dispatch_fom->set_custom_dispatch(batt_vars->batt_custom_dispatch);
+                auto dispatch_fom_old = dynamic_cast<dispatch_automatic_front_of_meter_t*>(dispatch_model);
+                dispatch_fom_old->set_custom_dispatch(batt_vars->batt_custom_dispatch);
+
+                dispatch_fom->set_custom_dispatch(batt_vars->batt_custom_dispatch);
 			}
 		}
 		
@@ -1006,12 +1009,14 @@ battstor::battstor(var_table& vt, bool setup_model, size_t nrec, double dt_hr, b
         );
 		if (batt_vars->batt_dispatch == dispatch_interface::CUSTOM_DISPATCH)
 		{
-			if (dispatch_automatic_behind_the_meter * dispatch_btm = dynamic_cast<dispatch_automatic_behind_the_meter*>(dispatch_model))
+			if (auto dispatch_btm = dynamic_cast<dispatch_automatic_behind_the_meter*>(dispatch_model))
 			{
 				if (batt_vars->batt_custom_dispatch.size() != 8760 * step_per_hour) {
 					throw exec_error("battery", "invalid custom dispatch, must be 8760 * steps_per_hour");
 				}
+				auto dispatch_btm_old = dynamic_cast<dispatch_automatic_behind_the_meter_t*>(dispatch_model_old);
 				dispatch_btm->set_custom_dispatch(batt_vars->batt_custom_dispatch);
+				dispatch_btm_old->set_custom_dispatch(batt_vars->batt_custom_dispatch);
 			}
 		}
 	}
