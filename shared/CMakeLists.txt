@@ -74,7 +74,7 @@ set(SHARED_SRC
 	lib_dispatch_powerflow.cpp
 	lib_battery_controller.cpp
 	vartab.cpp
-        lib_battery_metrics.cpp lib_battery_metrics.h)
+        lib_battery_metrics.cpp lib_battery_metrics.h lib_battery_manager.cpp lib_battery_manager.h)
 
 
 #####################################################################################################################
