@@ -107,14 +107,21 @@ public:
         return lifetime->estimateCycleDamage();
     }
 
+    void reset_replacements() {replacements = 0;}
+
     void set_state(const battery_state& state);
     battery_state get_state();
 
     // Get capacity quantities
     double get_I(){return capacity->get_I();}
     double get_V(){return voltage->get_battery_voltage();}
+    double get_V_cell(){return voltage->get_cell_voltage();}
+    double get_V_nom(); // the nominal battery voltage
     double get_SOC();
     double get_q0(){return capacity->get_q1();}
+    double get_q2(){return capacity->get_q2();}
+    double get_qmax_thermal(){return capacity->get_qmax_thermal();}
+    double get_qmax_lifetime(){return capacity->get_qmax();}
 
     double get_battery_charge_needed(double SOC_max);
     double battery_charge_maximum();
@@ -123,7 +130,7 @@ public:
     double get_battery_energy_to_fill(double SOC_max);
     double get_battery_power_to_fill(double SOC_max);
 
-    double battery_voltage_nominal(); // the nominal battery voltage
+    double get_T_K(){return thermal->get_T_battery();}
 
     double get_capacity_percent_thermal(){return thermal->get_capacity_percent();}
     double get_capacity_percent_lifetime(){return lifetime->get_capacity_percent();}

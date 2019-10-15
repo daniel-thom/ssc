@@ -27,7 +27,7 @@ double battery_rectifier::convert_to_dc(double P_ac, double * P_dc)
     return P_loss;
 }
 
-AC_charge_controller::AC_charge_controller(dispatch_interface *dispatch, battery_metrics_t * battery_metrics, double efficiencyACToDC, double efficiencyDCToAC):
+AC_charge_controller::AC_charge_controller(dispatch_interface *dispatch, battery_metrics * battery_metrics, double efficiencyACToDC, double efficiencyDCToAC):
 m_dispatch(dispatch),
 m_batteryMetrics(battery_metrics)
 {
@@ -71,7 +71,7 @@ void AC_charge_controller::run(size_t year, size_t hour_of_year, size_t step_of_
     m_batteryMetrics->compute_metrics_ac(m_dispatch->getBatteryPower());
 }
 
-DC_charge_controller::DC_charge_controller(dispatch_interface *dispatch, battery_metrics_t * battery_metrics, double efficiencyDCToDC, double inverterEfficiencyCutoff):
+DC_charge_controller::DC_charge_controller(dispatch_interface *dispatch, battery_metrics * battery_metrics, double efficiencyDCToDC, double inverterEfficiencyCutoff):
         m_dispatch(dispatch),
         m_batteryMetrics(battery_metrics)
 {

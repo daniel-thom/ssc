@@ -289,7 +289,7 @@ void battery_powerflow::reset()
 double battery_powerflow::get_target_current(const double target_power_kw)
 {
     double I = 0.; // [W],[V]
-    I = util::kilowatt_to_watt * target_power_kw / battery_model->battery_voltage_nominal();
+    I = util::kilowatt_to_watt * target_power_kw / battery_model->get_V_nom();
     apply_current_restrictions(I);
     return I;
 }

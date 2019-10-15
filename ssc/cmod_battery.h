@@ -27,23 +27,13 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "core.h"
 
+#include "lib_storage_params.h"
+#include "lib_battery_model.h"
+#include "lib_dispatch.h"
+#include "lib_battery_controller.h"
+
 // forward declarations to speed up build
 class SharedInverter;
-class voltage_t;
-class lifetime_t;
-class lifetime_cycle_t;
-class lifetime_calendar_t;
-class thermal_t;
-class capacity_t;
-class battery;
-class battery_t;
-class battery_metrics_t;
-class dispatch_t;
-class dispatch_interface;
-class losses_t;
-class ChargeController;
-class charge_controller_interface;
-class UtilityRate;
 
 extern var_info vtab_battery_inputs[];
 extern var_info vtab_battery_outputs[];
@@ -270,8 +260,6 @@ struct battstor
 	bool input_custom_dispatch = false;
 
 	// for user schedule
-	void force_replacement(double replacement_percent);
-	void check_replacement_schedule();
 	void calculate_monthly_and_annual_outputs( compute_module &cm );
 
 	// time quantities
@@ -288,20 +276,10 @@ struct battstor
 	size_t year_index; // index for one year (0- steps_per_hour * 8760)
 
 	// member data
-	voltage_t *voltage_model;
-	lifetime_t * lifetime_model;
-	lifetime_cycle_t *lifetime_cycle_model;
-	lifetime_calendar_t *lifetime_calendar_model;
-	thermal_t *thermal_model;
-	capacity_t *capacity_model;
-	battery_t* battery_model_old;
+    std::shared_ptr<battery_properties_params> params;
     std::shared_ptr<battery> battery_model;
-	battery_metrics_t *battery_metrics;
-    battery_metrics_t *battery_metrics_old;
-    dispatch_t *dispatch_model_old;
+	battery_metrics *batt_metrics;
 	dispatch_interface *dispatch_model;
-	losses_t *losses_model;
-	ChargeController *charge_control_old;
     charge_controller_interface *charge_control;
     UtilityRate * utilityRate;
 	
@@ -333,7 +311,7 @@ struct battstor
 	std::vector<double> fuelcellPower;
 
 	// outputs
-	ssc_number_t
+	double
 		*outTotalCharge,
 		*outAvailableCharge,
 		*outBoundCharge,

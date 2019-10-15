@@ -285,13 +285,13 @@ double battery::get_battery_charge_needed(double SOC_max)
 }
 double battery::get_battery_energy_to_fill(double SOC_max)
 {
-    double battery_voltage = this->battery_voltage_nominal(); // [V]
+    double battery_voltage = this->get_V_nom(); // [V]
     double charge_needed_to_fill = this->get_battery_charge_needed(SOC_max); // [Ah] - qmax - q0
     return (charge_needed_to_fill * battery_voltage)*util::watt_to_kilowatt;  // [kWh]
 }
 double battery::get_battery_energy_nominal()
 {
-    return battery_voltage_nominal() * capacity->get_state().qmax * util::watt_to_kilowatt;
+    return get_V_nom() * capacity->get_state().qmax * util::watt_to_kilowatt;
 }
 double battery::get_battery_power_to_fill(double SOC_max)
 {
@@ -301,5 +301,5 @@ double battery::get_battery_power_to_fill(double SOC_max)
 
 double battery::battery_charge_maximum(){ return capacity->get_qmax(); }
 double battery::battery_charge_maximum_thermal() { return capacity->get_qmax_thermal(); }
-double battery::battery_voltage_nominal(){ return voltage->get_battery_voltage_nominal(); }
+double battery::get_V_nom(){ return voltage->get_battery_voltage_nominal(); }
 double battery::get_SOC(){ return capacity->get_SOC(); }

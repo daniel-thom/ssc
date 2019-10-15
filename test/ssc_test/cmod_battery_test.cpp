@@ -21,7 +21,7 @@ TEST_F(CMBattery_cmod_battery, CommercialLifetimePeakShaving) {
 		// roundtrip efficiency test will ensure that the battery cycled
 		ssc_number_t roundtripEfficiency;
 		ssc_data_get_number(data, "average_battery_roundtrip_efficiency", &roundtripEfficiency);
-		EXPECT_NEAR(roundtripEfficiency, 93.84, 0.1);
+		EXPECT_NEAR(roundtripEfficiency, 94.37, 0.1);
 
 		// test that lifetime output is achieved
 		int n;

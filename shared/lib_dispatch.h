@@ -255,8 +255,32 @@ protected:
     std::map<size_t, double> _percent_charge_array;
 };
 
-class grid_point;
+class grid_point
+{
+    /**
+    Class for behind-the-meter dispatch which encapsulates the required grid power, hour, and step:
+    grid_point = [grid_power, hour, step]
+    */
+public:
+    grid_point(double grid = 0., size_t hour = 0, size_t step = 0) :
+            _grid(grid), _hour(hour), _step(step){}
+    double Grid() const { return _grid; }
+    size_t Hour() const { return _hour; }
+    size_t Step() const { return _step; }
 
+private:
+    double _grid;
+    size_t _hour;
+    size_t _step;
+};
+
+struct byGrid
+{
+    bool operator()(grid_point const  &a, grid_point const &b)
+    {
+        return a.Grid() > b.Grid();
+    }
+};
 typedef std::vector<grid_point> grid_vec;
 
 /*! Automated dispatch base class */

@@ -1661,7 +1661,7 @@ battery_metrics_t::battery_metrics_t(double dt_hour)
 	_dt_hour = dt_hour;
 
 	// single value metrics
-	_e_charge_accumulated = 0; 
+	_e_charge_accumulated = 0;
 	_e_charge_from_pv = 0.;
 	_e_charge_from_grid = _e_charge_accumulated; // assumes initial charge from grid
 	_e_discharge_accumulated = 0.;
@@ -1750,7 +1750,7 @@ void battery_metrics_t::accumulate_battery_charge_components(double P_tofrom_bat
 }
 void battery_metrics_t::accumulate_grid_annual(double P_tofrom_grid)
 {
-	// e_grid > 0 (export to grid) 
+	// e_grid > 0 (export to grid)
 	// e_grid < 0 (import from grid)
 
 	if (P_tofrom_grid > 0)

@@ -24,6 +24,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 #include "lib_battery.h"
+#include "lib_dispatch.h"
 
 
 #ifndef __LIB_BATTERY_DISPATCH_H__
@@ -263,33 +264,7 @@ private:
 };
 
 /*! Class containing calculated grid power at a single time step */
-class grid_point
-{
-	/**
-	Class for behind-the-meter dispatch which encapsulates the required grid power, hour, and step:
-	grid_point = [grid_power, hour, step]
-	*/
-public:
-	grid_point(double grid = 0., size_t hour = 0, size_t step = 0) :
-		_grid(grid), _hour(hour), _step(step){}
-	double Grid() const { return _grid; }
-	size_t Hour() const { return _hour; }
-	size_t Step() const { return _step; }
-
-private:
-	double _grid;
-	size_t _hour;
-	size_t _step;
-};
-
-struct byGrid
-{
-	bool operator()(grid_point const  &a, grid_point const &b)
-	{
-		return a.Grid() > b.Grid();
-	}
-};
-typedef std::vector<grid_point> grid_vec;
+class grid_point;
 
 /*! Automated dispatch base class */
 class dispatch_automatic_t : public dispatch_t

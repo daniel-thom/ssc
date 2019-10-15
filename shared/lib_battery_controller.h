@@ -26,6 +26,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // Required due to need for complete type in std::unique_ptr<>
 #include "lib_shared_inverter.h"
 #include "lib_dispatch.h"
+#include "lib_battery_metrics.h"
 
 class bidir_inverter
 {
@@ -131,7 +132,7 @@ class AC_charge_controller : public charge_controller_interface
 {
 public:
     /// Construct an AC_charge_controller with a dispatch object, battery metrics object, and single-point efficiencies for the battery bidirectional inverter
-    AC_charge_controller(dispatch_interface *dispatch, battery_metrics_t * battery_metrics, double efficiencyACToDC, double efficiencyDCToAC);
+    AC_charge_controller(dispatch_interface *dispatch, battery_metrics * battery_metrics, double efficiencyACToDC, double efficiencyDCToAC);
 
     /// Destroy the AC_charge_controller
     ~AC_charge_controller() {};
@@ -148,7 +149,7 @@ private:
 
     // memory managed elsewhere
     BatteryPower * m_batteryPower;
-    battery_metrics_t *m_batteryMetrics;    /// An object that tracks battery metrics for later analysis
+    battery_metrics *m_batteryMetrics;    /// An object that tracks battery metrics for later analysis
     dispatch_interface *m_dispatch;		/// An object containing the framework to run a battery and check operational constraints
 };
 
@@ -163,7 +164,7 @@ class DC_charge_controller : public charge_controller_interface
 {
 public:
     /// Construct a DC_charge_controller with a dispatch object, battery metrics object, and single-point efficiency for the battery charge controller
-    DC_charge_controller(dispatch_interface *dispatch, battery_metrics_t * battery_metrics, double efficiencyDCToDC, double inverterEfficiencyCutoff);
+    DC_charge_controller(dispatch_interface *dispatch, battery_metrics * battery_metrics, double efficiencyDCToDC, double inverterEfficiencyCutoff);
 
     /// Destroy the DC_charge_controller object
     ~DC_charge_controller() {};
@@ -184,7 +185,7 @@ private:
 
     // memory managed elsewhere
     BatteryPower * m_batteryPower;
-    battery_metrics_t *m_batteryMetrics;    /// An object that tracks battery metrics for later analysis
+    battery_metrics *m_batteryMetrics;    /// An object that tracks battery metrics for later analysis
     dispatch_interface *m_dispatch;		/// An object containing the framework to run a battery and check operational constraints
 };
 

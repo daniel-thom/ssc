@@ -49,6 +49,7 @@ public:
     virtual void replace_battery(double replacement_percent) = 0;
 
     virtual double get_q1() = 0; // available charge
+    virtual double get_q2() = 0; // bound charge for kibam
     virtual double get_q10() = 0; // capacity at 10 hour discharge rate
     virtual double get_SOC() = 0;
     virtual size_t get_charge_mode() = 0;
@@ -95,7 +96,7 @@ public:
     void replace_battery(double replacement_percent) override;
 
     double get_q1() override; // Available charge
-    double get_q2(); // Bound charge
+    double get_q2() override; // Bound charge
     double get_q10() override; // Capacity at 10 hour discharge rate
     double get_SOC() override {return state.SOC;}
     size_t get_charge_mode() override {return state.charge_mode;}
@@ -158,6 +159,7 @@ public:
     void replace_battery(double replacement_percent) override;
 
     double get_q1() override;  // Available charge
+    double get_q2() override {throw general_error("capacity model is capacity_lithium_ion not capacity_kibam type, q2 does not exist.");} // Bound charge
     double get_q10() override; // Capacity at 10 hour discharge rate
     double get_SOC() override {return state.SOC;}
     size_t get_charge_mode() override {return state.charge_mode;};

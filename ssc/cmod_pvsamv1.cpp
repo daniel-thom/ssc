@@ -1956,7 +1956,6 @@ void cm_pvsamv1::exec( ) throw (general_error)
 				if (en_batt && (batt_topology == ChargeController::DC_CONNECTED))
 				{
 					batt.initialize_time(iyear, hour, jj);
-					batt.check_replacement_schedule();
 				}
 
 				double acpwr_gross = 0, ac_wiringloss = 0, transmissionloss = 0;
@@ -2101,7 +2100,6 @@ void cm_pvsamv1::exec( ) throw (general_error)
 				if (en_batt && batt_topology == ChargeController::AC_CONNECTED)
 				{
 					batt.initialize_time(iyear, hour, jj);
-					batt.check_replacement_schedule();
 					batt.advance(m_vartab, PVSystem->p_systemACPower[idx], 0, p_load_full[idx]);
 					PVSystem->p_systemACPower[idx] = batt.outGenPower[idx];
 				}
