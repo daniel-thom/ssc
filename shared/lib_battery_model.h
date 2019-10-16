@@ -114,14 +114,16 @@ public:
 
     // Get capacity quantities
     double get_I(){return capacity->get_I();}
-    double get_V(){return voltage->get_battery_voltage();}
-    double get_V_cell(){return voltage->get_cell_voltage();}
-    double get_V_nom(); // the nominal battery voltage
+    double get_charge_mode(){return capacity->get_charge_mode();}
     double get_SOC();
     double get_q0(){return capacity->get_q1();}
     double get_q2(){return capacity->get_q2();}
     double get_qmax_thermal(){return capacity->get_qmax_thermal();}
     double get_qmax_lifetime(){return capacity->get_qmax();}
+
+    double get_V(){return voltage->get_battery_voltage();}
+    double get_V_cell(){return voltage->get_cell_voltage();}
+    double get_V_nom(); // the nominal battery voltage
 
     double get_battery_charge_needed(double SOC_max);
     double battery_charge_maximum();
@@ -141,9 +143,9 @@ public:
     size_t get_cycles_elapsed(){return lifetime->get_cycles_elapsed();}
     size_t get_n_replacements(){return replacements;}
 
+    const std::shared_ptr<const battery_properties_params> params;
 private:
 
-    std::shared_ptr<const battery_properties_params> params;
 
     battery_capacity_interface * capacity;
     battery_thermal * thermal;

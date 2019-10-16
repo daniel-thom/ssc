@@ -129,6 +129,7 @@ params(p)
     else{
         voltage = new voltage_table(p->voltage);
     }
+    replacements = 0;
 }
 
 battery::battery(const battery& battery):

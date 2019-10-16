@@ -24,7 +24,6 @@ struct storage_replacement_params
     std::vector<int> replacement_per_yr_schedule;   // number/year
     std::vector<int> replacement_per_yr;            // number/year
     std::vector<double> replacement_percent_per_yr_schedule; // %
-    double cost_per_kwh;                            // $/kWh
 
     void initialize_from_data(var_table &vt, bool batt_not_fuelcell);
 };

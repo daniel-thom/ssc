@@ -9,7 +9,6 @@ void storage_replacement_params::initialize_from_data(var_table &vt, bool batt_n
         return;
 
     if (batt_not_fuelcell && vt.is_assigned("om_replacement_cost1")){
-        cost_per_kwh = vt.as_vector_double("om_replacement_cost1")[0];
         if (option == CAPACITY){
             replacement_capacity = vt.as_double("batt_replacement_capacity");
         }
@@ -20,7 +19,6 @@ void storage_replacement_params::initialize_from_data(var_table &vt, bool batt_n
         // other battery-specific lifetime variables are processed in battery replacement params
     }
     if (!batt_not_fuelcell && vt.is_assigned("fuelcell_per_kWh")){
-        cost_per_kwh = vt.as_number("fuelcell_per_kWh");
         if (option == CAPACITY){
             replacement_capacity = vt.as_double("fuelcell_replacement_percent");
         }

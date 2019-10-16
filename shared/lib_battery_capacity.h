@@ -4,7 +4,7 @@
 #include "lib_storage_params.h"
 
 struct capacity_state{
-    enum { CHARGE, NO_CHARGE, DISCHARGE };
+    enum MODE { CHARGE, NO_CHARGE, DISCHARGE };
 
     double q0;  // [Ah] - Total capacity at timestep
     double qmax; // [Ah] - maximum possible capacity
