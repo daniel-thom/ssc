@@ -113,7 +113,7 @@ class battery_FOM_automated : public storage_interface
 protected:
     const storage_FOM_params FOM;
 
-    storage_automated_dispatch_params automated_dispatch;
+    dispatch_automated_params automated_dispatch;
 
     UtilityRate * utilityRate;
 
@@ -136,7 +136,7 @@ class battery_FOM_manual : public storage_interface
 protected:
     const storage_FOM_params FOM;
 
-    storage_manual_dispatch_params manual_dispatch;
+    dispatch_manual_params manual_dispatch;
 
     void battery_FOM_manual_from_data(var_table &vt);
 
@@ -185,7 +185,7 @@ public:
 class battery_BTM_automated : public battery_BTM
 {
 protected:
-    storage_automated_dispatch_params automated_dispatch;
+    dispatch_automated_params automated_dispatch;
 
     void battery_BTM_automated_from_data(var_table& vt);
 
@@ -201,7 +201,7 @@ public:
 class battery_BTM_manual : public battery_BTM
 {
 protected:
-    storage_manual_dispatch_params manual_dispatch;
+    dispatch_manual_params manual_dispatch;
 
     void battery_BTM_manual_from_data(var_table& vt);
 
@@ -211,7 +211,7 @@ public:
 
 };
 
-class battery_BTM_custom : public battery_BTM
+class dispatch_BTM_custom : public battery_BTM
 {
 protected:
     std::vector<double> custom_dispatch_kw;
@@ -219,7 +219,7 @@ protected:
     void battery_BTM_custom_from_data(var_table& vt);
 
 public:
-    explicit battery_BTM_custom();
+    explicit dispatch_BTM_custom();
 
     void from_data(var_table &vt) override;
 

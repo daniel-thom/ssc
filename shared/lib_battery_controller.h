@@ -132,7 +132,7 @@ protected:
     double charging_mode;
     int time_at_mode;
 
-    /// Helper function to run common dispatch tasks.  Requires that m_batteryPower->powerBattery is previously defined
+    /// Helper function to run common dispatch tasks. Requires that m_batteryPower->powerBattery is previously defined
     double runDispatch(const storage_time_state &time, double power_DC);
 
     /// Method to check any operational constraints and modify the battery current if needed

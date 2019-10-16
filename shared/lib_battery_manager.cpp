@@ -1,7 +1,11 @@
+#include "lib_storage_params.h"
+#include "lib_dispatch_params.h"
+
 #include "lib_battery_manager.h"
 
 
-battery_manager::battery_manager(var_table& vt, bool setup_model, size_t nrec, double dt_hr, batt_variables *batt_vars_in)
+
+battery_manager::battery_manager(var_table& vt, bool setup_model, size_t nrec, double dt_hr)
 {
     make_vars = false;
 

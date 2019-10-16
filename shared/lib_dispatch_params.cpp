@@ -35,8 +35,13 @@ void storage_FOM_params::initialize_from_data(var_table& vt, size_t step_per_hou
 }
 
 void dispatch_automated_params::initialize_from_data(var_table& vt){
-    look_ahead_hours = vt.as_unsigned_long("batt_look_ahead_hours");
     dispatch_update_frequency_hours = vt.as_double("batt_dispatch_update_frequency_hours");
+    look_ahead_hours = vt.as_unsigned_long("batt_look_ahead_hours");
+
+    // if look behind, only allow 24 hours
+    int mode = vt.as_integer("batt_dispatch_choice");
+    if (mode == dispatch_params::FOM_MODES::FOM_LOOK_BEHIND)
+        look_ahead_hours = 24;
 
     can_charge = true;
     can_clipcharge = true;

@@ -33,7 +33,7 @@ TEST_F(BatteryDispatchTest_lib_battery_dispatch, DispatchManual)
 
 	// Test max charge power constraint
 	batteryPower->powerPV = 1000; batteryPower->voltageSystem = 600;
-	dispatchManual->dispatch(year, hour_of_year, step_of_hour);
+    dispatchManual->dispatch(step_of_hour);
 	EXPECT_NEAR(batteryPower->powerBatteryDC, batteryPowerOld->powerBatteryDC, 1e-3) << "DispatchManual: 1";
 
 
@@ -45,7 +45,7 @@ TEST_F(BatteryDispatchTest_lib_battery_dispatch, DispatchManual)
 
 
     batteryPower->powerPV = 0; batteryPower->voltageSystem = 600; batteryPower->powerLoad = 1000;
-	dispatchManual->dispatch(year, hour_of_year, step_of_hour);
+    dispatchManual->dispatch(step_of_hour);
 
 
 	EXPECT_NEAR(batteryPower->powerBatteryDC, batteryPowerOld->powerBatteryDC, 1e-3) << "DispatchManual: 2";
@@ -85,7 +85,7 @@ TEST_F(BatteryDispatchTest_lib_battery_dispatch, DispatchManualYear)
         powerflow->powerPVClipped = 0;
 
         // Dispatch the battery
-        dispatchManual->dispatch(year, hour, 0);
+        dispatchManual->dispatch(hour);
 
 
         powerflowOld->powerGeneratedBySystem = P_gen;
@@ -139,13 +139,13 @@ TEST_F(BatteryDispatchTest_lib_battery_dispatch, DispatchAutoBTM)
 	batteryPower->connectionMode = ChargeController::AC_CONNECTED;
 
 	// TEST 1: Verify no grid charging since disallowed
-	dispatchAutoBTM->dispatch(0, 0, 0);
+    dispatchAutoBTM->dispatch(0);
 	EXPECT_EQ(batteryPower->powerGridToBattery, 0);
 	EXPECT_EQ(batteryPower->powerBatteryDC, 0);
 
 	// TEST 2: Now, allow grid charging, should charge
 	batteryPower->canGridCharge = true;
-	dispatchAutoBTM->dispatch(0, 1, 0);
+    dispatchAutoBTM->dispatch(0);
 	EXPECT_GT(batteryPower->powerGridToBattery, 0);
 	EXPECT_LT(batteryPower->powerBatteryDC, 0);
 }
@@ -204,7 +204,7 @@ TEST_F(BatteryDispatchTest_lib_battery_dispatch, DispatchPeakShavingAheadYear)
         powerflow->powerPVClipped = 0;
 
         // Dispatch the battery
-        dispatchAutoBTM->dispatch(year, hour, 0);
+        dispatchAutoBTM->dispatch(hour);
 
 
         powerflowOld->powerGeneratedBySystem = P_gen;
@@ -254,7 +254,7 @@ TEST_F(BatteryDispatchTest_lib_battery_dispatch, DispatchFOMInput)
 	batteryPower->powerFuelCell = 300;
 
 	dispatchAutoFOM->set_custom_dispatch(P_batt);
-	dispatchAutoFOM->dispatch(0, 0, 0);
+    dispatchAutoFOM->dispatch(0);
 
 }
 
@@ -293,7 +293,7 @@ TEST_F(BatteryDispatchTest_lib_battery_dispatch, DispatchFOM_DCAuto)
 		batteryPower->powerGeneratedBySystem = pvDC[h];
 		batteryPower->powerPV = pvDC[h];
 		batteryPower->powerPVClipped = clip[h];
-		dispatchAutoDC->dispatch(0, h, 0);
+        dispatchAutoDC->dispatch(h);
 		p_batterykW.push_back(batteryPower->powerBatteryAC);
 }
 

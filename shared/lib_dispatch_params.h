@@ -263,26 +263,32 @@ struct dispatch_FTM_prices{
     enum MODE{LOOK_AHEAD, LOOK_BEHIND, INPUT_FORECAST} mode;
     const int meter_position = dispatch_params::FRONT;
 
-    std::shared_ptr<battery_charging_params> charging;
+    std::shared_ptr<const storage_time_params> time;
+
+    std::shared_ptr<battery_controller_params> controller;
 
     std::shared_ptr<electricity_prices_params> prices;
 
     std::shared_ptr<storage_forecast> forecast;
 
+    std::shared_ptr<dispatch_automated_params> automated;
+
     double cost_per_kwh;
     double cost_per_kwh_fuelcell;
-    double cycle_cost_choice;
+    enum CYCLE {MODEL, INPUT} cycle_cost_choice;
     double cycle_cost;
 
-    void initialize_from_data(var_table& vt, std::shared_ptr<battery_capacity_params>& cap){
+    void initialize_from_data(var_table& vt, std::shared_ptr<battery_properties_params>& p){
+        time = p->lifetime->time;
         mode = static_cast<MODE>(vt.as_integer("batt_dispatch_choice"));
-        charging->initialize_from_data(vt, cap);
-        prices->initialize_from_data(vt, cap->time->step_per_hour);
+        controller->initialize_from_data(vt, p);
+        prices->initialize_from_data(vt, p->lifetime->time->step_per_hour);
         forecast->initialize_from_data(vt);
+        automated->initialize_from_data(vt);
 
         cost_per_kwh_fuelcell = vt.as_number("fuelcell_per_kWh");
         cost_per_kwh = vt.as_vector_double("om_replacement_cost1")[0];
-        cycle_cost_choice = vt.as_integer("batt_cycle_cost_choice");
+        cycle_cost_choice = static_cast<CYCLE>(vt.as_integer("batt_cycle_cost_choice"));
         cycle_cost = vt.as_double("batt_cycle_cost");
     }
 

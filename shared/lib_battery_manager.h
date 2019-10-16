@@ -3,10 +3,17 @@
 
 #include "vartab.h"
 
-struct battery_manager
+#include "lib_shared_inverter.h"
+#include "lib_battery_model.h"
+#include "lib_battery_metrics.h"
+#include "lib_dispatch.h"
+#include "lib_battery_controller.h"
+
+class battery_manager
 {
+public:
     /// Pass in the single-year number of records
-    battery_manager( var_table &vt, bool setup_model, size_t nrec, double dt_hr, batt_variables *batt_vars=0);
+    battery_manager( var_table &vt, bool setup_model, size_t nrec, double dt_hr);
 
     battery_manager(const battery_manager& orig);
 
@@ -30,7 +37,7 @@ struct battery_manager
     void outputs_fixed(var_table *vt);
     void outputs_topology_dependent();
     void metrics();
-    void update_grid_power(compute_module &cm, double P_gen_ac, double P_load_ac, size_t index);
+//    void update_grid_power(compute_module &cm, double P_gen_ac, double P_load_ac, size_t index);
 
     /*! Manual dispatch*/
     bool manual_dispatch = false;
@@ -51,7 +58,7 @@ struct battery_manager
     bool input_custom_dispatch = false;
 
     // for user schedule
-    void calculate_monthly_and_annual_outputs( compute_module &cm );
+//    void calculate_monthly_and_annual_outputs( compute_module &cm );
 
     // time quantities
     size_t step_per_hour;
@@ -77,7 +84,6 @@ struct battery_manager
     bool en;
     int chem;
 
-    batt_variables * batt_vars;
     bool make_vars;
 
     /*! Map of profile to discharge percent */
